@@ -220,14 +220,14 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
         }
     }) {
         when (val s = state) {
-            is BrowseState.Loading -> Box(Modifier.fillMaxSize()) { LoadingRow() }
+            is BrowseState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingRow() }
             is BrowseState.Error -> Box(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     EmptyState(Icons.Rounded.ErrorOutline, "Couldn't read this folder", s.message)
                     GlassButton("Try again", ::reload, prominent = false)
                 }
             }
-            is BrowseState.Ready -> if (visible.isEmpty()) Box(Modifier.fillMaxSize()) {
+            is BrowseState.Ready -> if (visible.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 EmptyState(Icons.Rounded.FolderOpen, "Nothing here", if (showHidden) "This folder is empty." else "This folder is empty, or its only entries are hidden.")
             } else LazyColumn(Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = topContentPadding(), bottom = (if (selected.isNotEmpty()) 120.dp else 40.dp) + bottomContentPadding(), start = 12.dp, end = 12.dp)) {
@@ -365,7 +365,7 @@ private fun DetailsSheet(node: Node, locationName: String, onDismiss: () -> Unit
             Row { DetailLabel("Kind"); Text(node.category().replaceFirstChar { it.uppercase() }, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
             if (!node.isDirectory) Row { DetailLabel("Size"); Text(formatBytes(node.size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
             if (node.modified > 0) Row { DetailLabel("Modified"); Text(formatRelative(node.modified), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
-            Row { DetailLabel("In"); Text(locationName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
+            Row { DetailLabel("In"); Text(locationName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis) }
             GlassButton("Done", onDismiss, Modifier.fillMaxWidth(), prominent = true)
             Spacer(Modifier.height(8.dp))
         }

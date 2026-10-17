@@ -69,7 +69,7 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
             GlassTopBar("Search", onBack = if (showBack) onBack else null)
         }
     }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = TopBarHeight + 8.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 8.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 GlassTextField(query, { query = it }, "Search every folder", modifier = Modifier.fillMaxWidth())

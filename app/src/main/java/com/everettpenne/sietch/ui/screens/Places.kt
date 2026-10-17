@@ -72,7 +72,7 @@ fun PlacesScreen(nav: Navigator) {
             })
         }
     }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = TopBarHeight + 16.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 16.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (locations.isEmpty()) item {
                 EmptyState(Icons.Rounded.FolderOpen, "No folders yet", "Tap the folder button above to grant Sietch a folder. It asks for nothing else.")

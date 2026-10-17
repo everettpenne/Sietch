@@ -48,9 +48,9 @@ fun RecentsScreen(nav: Navigator) {
             })
         }
     }) {
-        if (recents.isEmpty()) Box(Modifier.fillMaxSize()) {
+        if (recents.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmptyState(Icons.Rounded.History, "Nothing here yet", "Folders and files you open will show up here.")
-        } else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = TopBarHeight + 16.dp, bottom = bottomContentPadding(), start = 12.dp, end = 12.dp),
+        } else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 16.dp, bottom = bottomContentPadding(), start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items(recents, key = { "${it.treeUri}:${it.documentId}" }) { recent ->
                 FileRow(recent.name, null, recent.isDirectory, 0L, recent.visitedAt,

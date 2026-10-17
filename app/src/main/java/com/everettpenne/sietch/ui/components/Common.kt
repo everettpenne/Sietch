@@ -20,13 +20,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.everettpenne.glass.glassPalette
-import com.everettpenne.glass.frostedGlass
-import com.everettpenne.glass.glassSurface
 import com.everettpenne.glass.IosType
+import com.everettpenne.glass.TopBarHeight
+import com.everettpenne.glass.frostedGlass
+import com.everettpenne.glass.glassPalette
+import com.everettpenne.glass.glassSurface
 import com.everettpenne.sietch.data.categoryOf
 import com.everettpenne.sietch.ui.theme.Sietch
 import com.everettpenne.sietch.util.FolderStep
@@ -43,9 +45,11 @@ interface Navigator {
     fun openSettings()
 }
 
+/** The top inset for a page under a floating header: the status bar (content is drawn edge-to-edge) plus the kit's [TopBarHeight]. */
 @Composable
-fun topContentPadding(): Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+fun topContentPadding(): Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TopBarHeight
 
+/** The bottom inset for a page above the floating tab bar: the navigation bar plus the tab bar and a little breathing room. */
 @Composable
 fun bottomContentPadding(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 104.dp
 
@@ -79,8 +83,8 @@ fun BusyOverlay(text: String) {
 fun EmptyState(icon: ImageVector, title: String, message: String) {
     Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(44.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
