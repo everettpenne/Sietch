@@ -27,6 +27,7 @@ import com.everettpenne.sietch.data.Location
 import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
 import com.everettpenne.sietch.ui.theme.Sietch
+import com.everettpenne.sietch.util.FolderStep
 import kotlinx.coroutines.launch
 
 /** An ACTION_OPEN_DOCUMENT_TREE that also returns the flags the provider actually granted, so only those are persisted. */
@@ -79,7 +80,7 @@ fun PlacesScreen(nav: Navigator) {
             items(locations, key = { it.uri }) { location -> LocationCard(location, onOpen = {
                 val root = graph.fileSystem.rootOf(location.uri)
                 graph.recents.record(location.name, location.uri, root.documentId, isDirectory = true)
-                nav.openFolder(location.uri, root.documentId, location.name)
+                nav.openFolder(listOf(FolderStep(location.uri, root.documentId, location.name)))
             }, onRename = { renaming = location }, onRemove = { removing = location }) }
             item {
                 GlassButton("Add a folder", { addLocation.launch(Unit) }, Modifier.fillMaxWidth(), prominent = false)
@@ -116,7 +117,7 @@ private fun LocationCard(location: Location, onOpen: () -> Unit, onRename: () ->
             Text(location.name, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1)
             Text("Open", style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = .55f), maxLines = 1)
         }
-        Box(Modifier.size(40.dp).clickable { menu = true }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clickable { menu = true }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.MoreHoriz, "More for ${location.name}", tint = ink.copy(alpha = .8f))
         }
         GlassDropdownMenu(menu, { menu = false }) {

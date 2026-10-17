@@ -2,11 +2,12 @@ package com.everettpenne.sietch.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.everettpenne.glass.*
 import com.everettpenne.media.LocalImageViewer
@@ -27,9 +29,11 @@ import com.everettpenne.sietch.data.*
 import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
 import com.everettpenne.sietch.ui.theme.Sietch
+import com.everettpenne.sietch.util.FolderStep
 import com.everettpenne.sietch.util.RouteCodec
 import com.everettpenne.sietch.util.formatBytes
 import com.everettpenne.sietch.util.formatRelative
+import com.everettpenne.sietch.util.opSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -41,17 +45,40 @@ private sealed interface BrowseState {
     data class Error(val message: String) : BrowseState
 }
 
+/** The pushed-screen bar for a folder: a back button, the breadcrumb (ancestors tappable, the current folder last) and the row actions. */
+@Composable
+private fun BrowseTopBar(steps: List<FolderStep>, onBack: () -> Unit, onJump: (Int) -> Unit, trailing: @Composable RowScope.() -> Unit) {
+    val ink = glassPalette().ink
+    Box(Modifier.fillMaxWidth().progressiveBlur(fromTop = true, tint = MaterialTheme.colorScheme.background)) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
+            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                steps.forEachIndexed { i, step ->
+                    if (i > 0) Text("›", style = IosType.headline, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val last = i == steps.lastIndex
+                    Text(step.name, style = if (last) IosType.headline else IosType.subheadline,
+                        color = if (last) ink else Sietch.accent, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = if (last) Modifier else Modifier.clickable { onJump(i) })
+                }
+            }
+            trailing()
+        }
+    }
+}
+
 /** The file list: open, select several, and act on them — copy, move, rename, share, delete, make a folder. */
 @Composable
 fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
-    val decoded = remember(token) { RouteCodec.decodeFolder(token) }
-    val folder = remember(token) { decoded?.let { Folder(it.first, it.second) } }
-    val title = remember(token) { decoded?.third ?: "Folder" }
+    val steps = remember(token) { RouteCodec.decodePath(token).orEmpty() }
+    val current = steps.lastOrNull()
+    val folder = remember(token) { current?.let { Folder(it.treeUri, it.documentId) } }
+    val title = remember(token) { current?.name ?: "Folder" }
 
     if (folder == null) {
-        GlassScreen(bars = { GlassCenteredTopBar(title, onBack, Modifier.align(Alignment.TopCenter)) }) {
+        GlassScreen(bars = { GlassCenteredTopBar("Folder unavailable", onBack, Modifier.align(Alignment.TopCenter)) }) {
             Box(Modifier.fillMaxSize()) { EmptyState(Icons.Rounded.ErrorOutline, "Folder unavailable", "Its access may have been revoked.") }
         }
         return
@@ -85,7 +112,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     var details by remember { mutableStateOf<Node?>(null) }
     var deleting by remember { mutableStateOf<List<Node>?>(null) }
     var copyMove by remember { mutableStateOf<Pair<List<Node>, Boolean>?>(null) }
-    var busy by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf<String?>(null) }
     var msg by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val openImages = LocalImageViewer.current
@@ -111,25 +138,41 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     }
 
     fun doCopyMove(nodes: List<Node>, move: Boolean, target: Folder) {
-        if (busy) return
-        busy = true
+        if (busy != null) return
+        val gerund = if (move) "Moving" else "Copying"
+        val verb = if (move) "Moved" else "Copied"
+        busy = "$gerund…"
         scope.launch {
             var ok = 0
-            withContext(Dispatchers.IO) { for (n in nodes) if (if (move) graph.fileSystem.move(n, target) else graph.fileSystem.copy(n, target)) ok++ }
-            busy = false; copyMove = null; selected = emptySet()
-            msg = if (move) "Moved $ok" else "Copied $ok"
+            var done = 0
+            withContext(Dispatchers.IO) {
+                for (n in nodes) {
+                    if (if (move) graph.fileSystem.move(n, target) else graph.fileSystem.copy(n, target)) ok++
+                    done++
+                    if (nodes.size > 1) busy = "$gerund $done of ${nodes.size}…"
+                }
+            }
+            busy = null; copyMove = null; selected = emptySet()
+            msg = opSummary(verb, ok, nodes.size)
             reload()
         }
     }
 
     fun doDelete(nodes: List<Node>) {
-        if (busy) return
-        busy = true
+        if (busy != null) return
+        busy = "Deleting…"
         scope.launch {
             var ok = 0
-            withContext(Dispatchers.IO) { for (n in nodes) if (graph.fileSystem.delete(n)) ok++ }
-            busy = false; deleting = null; selected = emptySet()
-            msg = "Deleted $ok"
+            var done = 0
+            withContext(Dispatchers.IO) {
+                for (n in nodes) {
+                    if (graph.fileSystem.delete(n)) ok++
+                    done++
+                    if (nodes.size > 1) busy = "Deleting $done of ${nodes.size}…"
+                }
+            }
+            busy = null; deleting = null; selected = emptySet()
+            msg = opSummary("Deleted", ok, nodes.size)
             reload()
         }
     }
@@ -137,7 +180,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     fun open(node: Node) {
         if (node.isDirectory) {
             graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = true)
-            nav.openFolder(folder.treeUri, node.documentId, node.name)
+            nav.openFolder(steps + FolderStep(folder.treeUri, node.documentId, node.name))
         } else {
             graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = false)
             if (node.mime?.startsWith("image/") == true) {
@@ -149,13 +192,13 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     }
 
     GlassScreen(bars = {
-        GlassCenteredTopBar(title, onBack, Modifier.align(Alignment.TopCenter), trailing = {
+        BrowseTopBar(steps, onBack, onJump = { i -> nav.backTo(steps.subList(0, i + 1)) }) {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 GlassIconButton(Icons.Rounded.Search, "Search", nav::openSearch)
                 GlassIconButton(Icons.Rounded.Sort, "Sort", { sortMenu = true })
                 GlassIconButton(Icons.Rounded.MoreVert, "More", { moreMenu = true })
             }
-        })
+        }
         Box(Modifier.align(Alignment.TopEnd).padding(top = 120.dp, end = 16.dp)) {
             GlassDropdownMenu(sortMenu, { sortMenu = false }) {
                 SortBy.entries.forEach { s -> GlassMenuItem(label(s), { graph.settings.setSortBy(s); sortMenu = false }, icon = Icons.Rounded.Sort, selected = s == sortBy) }
@@ -178,7 +221,12 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     }) {
         when (val s = state) {
             is BrowseState.Loading -> Box(Modifier.fillMaxSize()) { LoadingRow() }
-            is BrowseState.Error -> Box(Modifier.fillMaxSize()) { EmptyState(Icons.Rounded.ErrorOutline, "Couldn't read this folder", s.message) }
+            is BrowseState.Error -> Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    EmptyState(Icons.Rounded.ErrorOutline, "Couldn't read this folder", s.message)
+                    GlassButton("Try again", ::reload, prominent = false)
+                }
+            }
             is BrowseState.Ready -> if (visible.isEmpty()) Box(Modifier.fillMaxSize()) {
                 EmptyState(Icons.Rounded.FolderOpen, "Nothing here", if (showHidden) "This folder is empty." else "This folder is empty, or its only entries are hidden.")
             } else LazyColumn(Modifier.fillMaxSize(),
@@ -201,27 +249,32 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                 }
             }
         }
-        if (msg != null) {
-            Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp)) {
-                Text(msg!!, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp))
-            }
-            LaunchedEffect(msg) { delay(2200); msg = null }
+        msg?.let { m ->
+            Msg(m, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp))
+            LaunchedEffect(m) { delay(2400); msg = null }
         }
     }
 
     if (newFolder) NewFolderSheet(title, onDismiss = { newFolder = false }, onCreate = { name ->
-        scope.launch { withContext(Dispatchers.IO) { graph.fileSystem.createFolder(folder, name) }; newFolder = false; reload() }
+        scope.launch {
+            val made = withContext(Dispatchers.IO) { graph.fileSystem.createFolder(folder, name) }
+            newFolder = false
+            if (made == null) msg = "Couldn't create \"$name\"" else reload()
+        }
     })
     renaming?.let { node -> RenameSheet(node, onDismiss = { renaming = null }, onRename = { newName ->
-        scope.launch { withContext(Dispatchers.IO) { graph.fileSystem.rename(node, newName) }; renaming = null; reload() }
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) { graph.fileSystem.rename(node, newName) }
+            renaming = null
+            if (ok) reload() else msg = "Couldn't rename \"${node.name}\""
+        }
     }) }
-    details?.let { node -> DetailsSheet(node, title) { details = null } }
+    details?.let { node -> DetailsSheet(node, steps.joinToString(" / ") { it.name }) { details = null } }
     deleting?.let { nodes -> GlassAlert("Delete ${if (nodes.size == 1) "\"${nodes[0].name}\"" else "${nodes.size} items"}?",
         "This removes ${if (nodes.size == 1) "it" else "them"} permanently. There is no recycle bin.",
-        confirmLabel = "Delete", destructive = true, onConfirm = { doDelete(nodes) }, onDismiss = { deleting = null }) }
-    copyMove?.let { (nodes, move) -> FolderPicker(onPick = { doCopyMove(nodes, move, it) }, onDismiss = { copyMove = null }) }
-    if (busy) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingRow() }
+        confirmLabel = "Delete", destructive = true, onConfirm = { deleting = null; doDelete(nodes) }, onDismiss = { deleting = null }) }
+    copyMove?.let { (nodes, move) -> FolderPicker(onPick = { copyMove = null; doCopyMove(nodes, move, it) }, onDismiss = { copyMove = null }) }
+    busy?.let { BusyOverlay(it) }
 }
 
 private fun label(s: SortBy) = when (s) {
@@ -235,7 +288,7 @@ private fun NodeMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        Box(Modifier.size(40.dp).clickable { open = true }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(44.dp).clickable { open = true }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.MoreHoriz, "More for ${node.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         GlassDropdownMenu(open, { open = false }) {
@@ -257,7 +310,7 @@ private fun SelectionBar(modifier: Modifier, count: Int, onClear: () -> Unit, on
         .glassSurface(RoundedCornerShape(28.dp), blurRadius = 8f, lensHeight = 20f, lensAmount = 32f)
         .padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         GlassCircleButton(onClear, size = 40.dp, description = "Clear selection") { Icon(Icons.Rounded.Close, null, tint = ink, modifier = Modifier.size(22.dp)) }
-        Text("$count", style = IosType.headline, color = ink, modifier = Modifier.padding(horizontal = 6.dp))
+        Text(if (count == 1) "1 selected" else "$count selected", style = IosType.subheadline.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = ink, modifier = Modifier.padding(horizontal = 6.dp))
         Spacer(Modifier.weight(1f))
         SelectionAction(Icons.Rounded.Share, "Share", ink, onShare)
         SelectionAction(Icons.Rounded.FileCopy, "Copy", ink, onCopy)

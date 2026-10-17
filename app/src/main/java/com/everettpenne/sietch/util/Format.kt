@@ -27,3 +27,17 @@ fun formatRelative(ms: Long): String {
     if (days < 7) return "${days}d ago"
     return java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(ms))
 }
+
+/**
+ * The one-line result of a bulk operation, honest about partial failures: "Copied 3", "Copied 2, 1 failed",
+ * "Deleted failed", "Moved 0". [verb] is the past participle ("Copied", "Moved", "Deleted").
+ */
+fun opSummary(verb: String, ok: Int, total: Int): String {
+    val failed = total - ok
+    return when {
+        total <= 0 -> "$verb 0"
+        failed == 0 -> "$verb $ok"
+        ok == 0 -> "$verb failed"
+        else -> "$verb $ok, $failed failed"
+    }
+}

@@ -16,6 +16,7 @@ import com.everettpenne.glass.*
 import com.everettpenne.sietch.data.Recent
 import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
+import com.everettpenne.sietch.util.FolderStep
 import com.everettpenne.sietch.util.formatRelative
 
 /** Folders and files the user opened recently, newest first. */
@@ -27,7 +28,7 @@ fun RecentsScreen(nav: Navigator) {
 
     fun open(recent: Recent) {
         graph.recents.record(recent.name, recent.treeUri, recent.documentId, recent.isDirectory)
-        if (recent.isDirectory) nav.openFolder(recent.treeUri, recent.documentId, recent.name)
+        if (recent.isDirectory) nav.openFolder(listOf(FolderStep(recent.treeUri, recent.documentId, recent.name)))
         else {
             val node = com.everettpenne.sietch.data.Node(
                 com.everettpenne.sietch.data.Folder(recent.treeUri, recent.documentId), recent.documentId,

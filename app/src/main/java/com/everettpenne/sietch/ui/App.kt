@@ -19,6 +19,7 @@ import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.Navigator
 import com.everettpenne.sietch.ui.screens.*
 import com.everettpenne.sietch.ui.theme.SietchTheme
+import com.everettpenne.sietch.util.FolderStep
 import com.everettpenne.sietch.util.RouteCodec
 import com.kyant.backdrop.backdrops.layerBackdrop
 
@@ -28,7 +29,7 @@ object Routes {
     const val SEARCH = "search"
     const val SETTINGS = "settings"
     const val BROWSE = "browse/{token}"
-    fun browse(treeUri: String, documentId: String, name: String) = "browse/${RouteCodec.folder(treeUri, documentId, name)}"
+    fun browse(steps: List<FolderStep>) = "browse/${RouteCodec.path(steps)}"
 }
 
 @Composable
@@ -45,8 +46,14 @@ fun SietchRoot() {
         val navController = rememberNavController()
         val nav = remember(navController) {
             object : Navigator {
-                override fun openFolder(treeUri: String, documentId: String, name: String) = navController.navigate(Routes.browse(treeUri, documentId, name))
-                override fun openSearch() = navController.navigate(Routes.SEARCH) { popUpTo(Routes.PLACES) { inclusive = false }; launchSingleTop = true }
+                override fun openFolder(steps: List<FolderStep>) = navController.navigate(Routes.browse(steps))
+                override fun backTo(steps: List<FolderStep>) {
+                    val token = RouteCodec.path(steps)
+                    val stack = navController.currentBackStack.value
+                    val idx = stack.indexOfLast { it.destination.route == Routes.BROWSE && it.arguments?.getString("token") == token }
+                    if (idx >= 0) navController.popBackStack(stack[idx].destination.id, inclusive = false)
+                }
+                override fun openSearch() = navController.navigate(Routes.SEARCH) { launchSingleTop = true }
                 override fun openSettings() = navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
             }
         }
@@ -73,7 +80,7 @@ fun SietchRoot() {
                         enterTransition = { fadeIn() }, exitTransition = { fadeOut() }, popEnterTransition = { fadeIn() }, popExitTransition = { fadeOut() }) {
                         composable(Routes.PLACES) { PlacesScreen(nav) }
                         composable(Routes.RECENTS) { RecentsScreen(nav) }
-                        composable(Routes.SEARCH) { SearchScreen(nav, onBack = { navController.popBackStack() }) }
+                        composable(Routes.SEARCH) { SearchScreen(nav, onBack = { navController.popBackStack() }, showBack = navController.previousBackStackEntry?.destination?.route == Routes.BROWSE) }
                         composable(Routes.SETTINGS) { SettingsScreen(nav, onBack = { navController.popBackStack() }) }
                         composable(Routes.BROWSE) { e -> BrowseScreen(e.arguments?.getString("token").orEmpty(), nav, onBack = { navController.popBackStack() }) }
                     }

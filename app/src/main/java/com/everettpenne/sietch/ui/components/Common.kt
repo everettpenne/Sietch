@@ -25,14 +25,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.everettpenne.glass.glassPalette
 import com.everettpenne.glass.frostedGlass
+import com.everettpenne.glass.glassSurface
+import com.everettpenne.glass.IosType
 import com.everettpenne.sietch.data.categoryOf
 import com.everettpenne.sietch.ui.theme.Sietch
+import com.everettpenne.sietch.util.FolderStep
 import com.everettpenne.sietch.util.formatBytes
 import com.everettpenne.sietch.util.formatRelative
 
 /** Where a tap goes. Pure callbacks, so screens do not know about navigation. */
 interface Navigator {
-    fun openFolder(treeUri: String, documentId: String, name: String)
+    /** Open a folder, given its full breadcrumb (root first, the folder itself last). */
+    fun openFolder(steps: List<FolderStep>)
+    /** Pop back to an ancestor folder already on the navigation stack, given its breadcrumb. */
+    fun backTo(steps: List<FolderStep>)
     fun openSearch()
     fun openSettings()
 }
@@ -45,6 +51,29 @@ fun bottomContentPadding(): Dp = WindowInsets.navigationBars.asPaddingValues().c
 
 @Composable
 fun LoadingRow() = Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp) }
+
+/** A quiet, self-dismissing glass pill for transient feedback ("Copied 3", "No app can open …"). */
+@Composable
+fun Msg(text: String, modifier: Modifier = Modifier) {
+    val ink = glassPalette().ink
+    Box(modifier.glassSurface(RoundedCornerShape(percent = 50), blurRadius = 8f, lensHeight = 10f, lensAmount = 20f, shadowed = true)) {
+        Text(text, style = IosType.subheadline, color = ink, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+    }
+}
+
+/** A full-screen, blocking progress overlay for copy/move/delete: a dimmed page and a glass card with a spinner and the running count. */
+@Composable
+fun BusyOverlay(text: String) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .18f)), contentAlignment = Alignment.Center) {
+        Column(Modifier.padding(horizontal = 40.dp)
+            .glassSurface(RoundedCornerShape(28.dp), blurRadius = 8f, lensHeight = 16f, lensAmount = 32f, shadowed = true)
+            .padding(horizontal = 28.dp, vertical = 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            CircularProgressIndicator(Modifier.size(30.dp), strokeWidth = 3.dp)
+            Text(text, style = IosType.subheadline, color = glassPalette().ink, maxLines = 1)
+        }
+    }
+}
 
 @Composable
 fun EmptyState(icon: ImageVector, title: String, message: String) {
@@ -125,8 +154,9 @@ fun GlassTextField(
             Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(leading, null, tint = ink.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 Box(Modifier.weight(1f)) { if (value.isEmpty()) Text(placeholder, color = ink.copy(alpha = .45f), style = MaterialTheme.typography.bodyLarge); inner() }
-                if (value.isNotEmpty()) Icon(Icons.Rounded.Close, "Clear", tint = ink.copy(alpha = .6f),
-                    modifier = Modifier.size(20.dp).clickable { onValueChange("") })
+                if (value.isNotEmpty()) Box(Modifier.size(44.dp).clickable { onValueChange("") }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Close, "Clear", tint = ink.copy(alpha = .6f), modifier = Modifier.size(20.dp))
+                }
             }
         })
 }
