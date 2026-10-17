@@ -30,8 +30,8 @@ fun SettingsScreen(nav: Navigator, onBack: () -> Unit) {
     val sortOrder by graph.settings.sortOrder.collectAsState()
     val locations by graph.locations.items.collectAsState()
 
-    GlassScreen(bars = { GlassCenteredTopBar("Settings", onBack, Modifier.align(Alignment.TopCenter)) }) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = topContentPadding(), bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
+    GlassScreen(bars = { GlassCenteredTopBar("Settings", onBack, Modifier.align(Alignment.TopCenter)) }) { contentPadding ->
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp)) {
             Group("Browsing") {
                 SwitchRow(Icons.Rounded.Folder, "Folders first", foldersFirst, graph.settings::setFoldersFirst)

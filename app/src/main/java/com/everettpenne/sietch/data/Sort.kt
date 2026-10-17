@@ -27,6 +27,20 @@ fun categoryOf(name: String, mime: String?, isDirectory: Boolean): String {
 
 fun Node.category(): String = categoryOf(name, mime, isDirectory)
 
+/** The human name of a file's broad kind, for subtitles and details rows. */
+fun kindLabel(name: String, mime: String?, isDirectory: Boolean): String = when (categoryOf(name, mime, isDirectory)) {
+    "folder" -> "Folder"
+    "image" -> "Image"
+    "video" -> "Video"
+    "audio" -> "Audio"
+    "pdf" -> "PDF"
+    "text" -> "Text"
+    "archive" -> "Archive"
+    "app" -> "App"
+    "document" -> "Document"
+    else -> "File"
+}
+
 /** Sorts a folder the way a file manager should: folders first (optionally), then the chosen key, names last and always ascending. */
 fun sortNodes(nodes: List<Node>, by: SortBy, order: SortOrder, foldersFirst: Boolean): List<Node> {
     if (nodes.size < 2) return nodes

@@ -2,12 +2,15 @@ package com.everettpenne.sietch.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -18,9 +21,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.everettpenne.glass.*
@@ -49,7 +54,7 @@ private sealed interface BrowseState {
 @Composable
 private fun BrowseTopBar(steps: List<FolderStep>, onBack: () -> Unit, onJump: (Int) -> Unit, trailing: @Composable RowScope.() -> Unit) {
     val ink = glassPalette().ink
-    Box(Modifier.fillMaxWidth().progressiveBlur(fromTop = true, tint = MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxWidth().glassTopBar().progressiveBlur(fromTop = true, tint = MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Back", onBack)
@@ -182,7 +187,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
             graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = true)
             nav.openFolder(steps + FolderStep(folder.treeUri, node.documentId, node.name))
         } else {
-            graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = false)
+            graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = false, mime = node.mime)
             if (node.mime?.startsWith("image/") == true) {
                 val images = visible.filter { it.mime?.startsWith("image/") == true }
                 val start = images.indexOfFirst { it.documentId == node.documentId }.coerceAtLeast(0)
@@ -199,7 +204,9 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                 GlassIconButton(Icons.Rounded.MoreVert, "More", { moreMenu = true })
             }
         }
-        Box(Modifier.align(Alignment.TopEnd).padding(top = 120.dp, end = 16.dp)) {
+        // Anchor the menus just under the real top bar, using the height it reports through the padding contract instead of a fixed guess.
+        val topInset = (LocalGlassBarInsets.current?.top ?: TopBarHeight).coerceAtLeast(TopBarHeight)
+        Box(Modifier.align(Alignment.TopEnd).padding(top = topInset - 2.dp, end = 16.dp)) {
             GlassDropdownMenu(sortMenu, { sortMenu = false }) {
                 SortBy.entries.forEach { s -> GlassMenuItem(label(s), { graph.settings.setSortBy(s); sortMenu = false }, icon = Icons.Rounded.Sort, selected = s == sortBy) }
                 GlassMenuItem("Ascending", { graph.settings.setSortOrder(SortOrder.ASC); sortMenu = false }, icon = Icons.Rounded.ArrowUpward, selected = sortOrder == SortOrder.ASC)
@@ -207,7 +214,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
             }
             GlassDropdownMenu(moreMenu, { moreMenu = false }) {
                 GlassMenuItem("New folder", { moreMenu = false; newFolder = true }, icon = Icons.Rounded.CreateNewFolder)
-                if ((state as? BrowseState.Ready)?.nodes?.isNotEmpty() == true) GlassMenuItem("Select all", { moreMenu = false; selected = visible.map { it.documentId }.toSet() }, icon = Icons.Rounded.SelectAll)
+                if (visible.isNotEmpty()) GlassMenuItem("Select all", { moreMenu = false; selected = visible.map { it.documentId }.toSet() }, icon = Icons.Rounded.SelectAll)
                 GlassMenuItem(if (showHidden) "Hide hidden files" else "Show hidden files", { moreMenu = false; graph.settings.setShowHidden(!showHidden) }, icon = Icons.Rounded.Visibility, selected = showHidden)
             }
         }
@@ -218,7 +225,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                 onMove = { copyMove = visible.filter { it.documentId in selected } to true },
                 onDelete = { deleting = visible.filter { it.documentId in selected } })
         }
-    }) {
+    }) { contentPadding ->
         when (val s = state) {
             is BrowseState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingRow() }
             is BrowseState.Error -> Box(Modifier.fillMaxSize()) {
@@ -228,16 +235,23 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                 }
             }
             is BrowseState.Ready -> if (visible.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                EmptyState(Icons.Rounded.FolderOpen, "Nothing here", if (showHidden) "This folder is empty." else "This folder is empty, or its only entries are hidden.")
+                val onlyHidden = !showHidden && s.nodes.isNotEmpty()
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    EmptyState(Icons.Rounded.FolderOpen, "Nothing here",
+                        if (onlyHidden) "Everything in this folder is hidden." else if (showHidden) "This folder is empty." else "This folder is empty, or its only entries are hidden.")
+                    if (onlyHidden) GlassButton("Show hidden files", { graph.settings.setShowHidden(true) }, prominent = false)
+                }
             } else LazyColumn(Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = topContentPadding(), bottom = (if (selected.isNotEmpty()) 120.dp else 40.dp) + bottomContentPadding(), start = 12.dp, end = 12.dp)) {
+                contentPadding = PaddingValues(top = contentPadding.calculateTopPadding(), bottom = (if (selected.isNotEmpty()) 120.dp else 40.dp) + contentPadding.calculateBottomPadding(), start = 12.dp, end = 12.dp)) {
                 items(visible, key = { it.documentId }) { node ->
                     FileRow(node.name, node.mime, node.isDirectory, node.size, node.modified,
                         onClick = { if (selected.isNotEmpty()) toggle(node.documentId) else open(node) },
                         onLongClick = { if (selected.isEmpty()) selected = setOf(node.documentId) else toggle(node.documentId) },
                         selected = node.documentId in selected,
+                        thumbnailUri = if (node.mime?.startsWith("image/") == true) graph.fileSystem.documentUri(node).toString() else null,
                         trailing = {
-                            if (selected.isEmpty()) NodeMenu(node,
+                            if (selected.isNotEmpty()) SelectCircle(node.documentId in selected)
+                            else NodeMenu(node,
                                 onOpen = { open(node) },
                                 onRename = { renaming = node },
                                 onDetails = { details = node },
@@ -303,6 +317,19 @@ private fun NodeMenu(
     }
 }
 
+/** The select indicator shown at the end of each row in selection mode: an empty ring, or a filled accent disc with a check. */
+@Composable
+private fun SelectCircle(selected: Boolean) {
+    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(22.dp).clip(CircleShape)
+            .background(if (selected) Sietch.accent else Color.Transparent)
+            .border(2.dp, if (selected) Color.Transparent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .45f), CircleShape),
+            contentAlignment = Alignment.Center) {
+            if (selected) Icon(Icons.Rounded.Check, "Selected", tint = Color.White, modifier = Modifier.size(14.dp))
+        }
+    }
+}
+
 @Composable
 private fun SelectionBar(modifier: Modifier, count: Int, onClear: () -> Unit, onShare: () -> Unit, onCopy: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit) {
     val ink = glassPalette().ink
@@ -331,7 +358,8 @@ private fun NewFolderSheet(parentName: String, onDismiss: () -> Unit, onCreate: 
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("New folder", style = MaterialTheme.typography.titleLarge)
             Text("Created inside $parentName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            GlassTextField(name, { name = it }, "Folder name", leading = Icons.Rounded.CreateNewFolder)
+            GlassTextField(name, { name = it }, "Folder name", leading = Icons.Rounded.CreateNewFolder, imeAction = ImeAction.Done, autoFocus = true,
+                onSubmit = { if (name.isNotBlank()) onCreate(name.trim()) })
             GlassButton("Create", { onCreate(name.trim()) }, Modifier.fillMaxWidth(), enabled = name.isNotBlank(), prominent = true)
             Spacer(Modifier.height(8.dp))
         }
@@ -344,7 +372,8 @@ private fun RenameSheet(node: Node, onDismiss: () -> Unit, onRename: (String) ->
     GlassSheet(onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Rename", style = MaterialTheme.typography.titleLarge)
-            GlassTextField(name, { name = it }, "Name", leading = Icons.Rounded.DriveFileRenameOutline)
+            GlassTextField(name, { name = it }, "Name", leading = Icons.Rounded.DriveFileRenameOutline, imeAction = ImeAction.Done, autoFocus = true,
+                onSubmit = { if (name.isNotBlank() && name != node.name) onRename(name.trim()) })
             GlassButton("Save", { onRename(name.trim()) }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && name != node.name, prominent = true)
             Spacer(Modifier.height(8.dp))
         }
@@ -362,7 +391,7 @@ private fun DetailsSheet(node: Node, locationName: String, onDismiss: () -> Unit
                     Text(if (node.isDirectory) "Folder" else (node.mime ?: "File"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Row { DetailLabel("Kind"); Text(node.category().replaceFirstChar { it.uppercase() }, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
+            Row { DetailLabel("Kind"); Text(kindLabel(node.name, node.mime, node.isDirectory), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
             if (!node.isDirectory) Row { DetailLabel("Size"); Text(formatBytes(node.size), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
             if (node.modified > 0) Row { DetailLabel("Modified"); Text(formatRelative(node.modified), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge) }
             Row { DetailLabel("In"); Text(locationName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis) }

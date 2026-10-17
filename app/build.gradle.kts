@@ -17,8 +17,8 @@ android {
         applicationId = "com.everettpenne.sietch"
         minSdk = 31
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -65,6 +65,8 @@ dependencies {
     implementation("com.everettpenne:updater")
     // Full-screen image viewer: also ../Glass.
     implementation("com.everettpenne:media")
+    // Row thumbnails for images (same version the Glass media module already pulls in).
+    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.core:core-ktx:1.16.0")

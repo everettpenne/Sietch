@@ -45,7 +45,10 @@ class FileSystem(private val resolver: ContentResolver) {
     } catch (_: Exception) { Uri.parse(treeUri).lastPathSegment ?: "Folder" }
 
     /** The document uri for a node, for opening it with another app or asking the provider to act on it. */
-    fun documentUri(node: Node): Uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(node.folder.treeUri), node.documentId)
+    fun documentUri(node: Node): Uri = documentUri(node.folder.treeUri, node.documentId)
+
+    /** The document uri for a tree + id pair, for recents entries that carry no full [Node]. */
+    fun documentUri(treeUri: String, documentId: String): Uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), documentId)
 
     private fun folderUri(folder: Folder): Uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(folder.treeUri), folder.documentId)
 

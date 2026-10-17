@@ -10,7 +10,7 @@ import java.io.File
 
 /** A folder or file the user opened recently, remembered by tree + document id so it can be re-opened later. */
 @Serializable
-data class Recent(val name: String, val treeUri: String, val documentId: String, val isDirectory: Boolean, val visitedAt: Long)
+data class Recent(val name: String, val treeUri: String, val documentId: String, val isDirectory: Boolean, val visitedAt: Long, val mime: String? = null)
 
 /** Recently opened folders and files, capped and kept in the app's private storage. */
 class Recents(private val file: File) {
@@ -20,10 +20,10 @@ class Recents(private val file: File) {
 
     init { load() }
 
-    fun record(name: String, treeUri: String, documentId: String, isDirectory: Boolean) {
+    fun record(name: String, treeUri: String, documentId: String, isDirectory: Boolean, mime: String? = null) {
         val now = System.currentTimeMillis()
         val rest = _items.value.filterNot { it.treeUri == treeUri && it.documentId == documentId }
-        _items.value = (listOf(Recent(name, treeUri, documentId, isDirectory, now)) + rest).take(50)
+        _items.value = (listOf(Recent(name, treeUri, documentId, isDirectory, now, mime)) + rest).take(50)
         save()
     }
 

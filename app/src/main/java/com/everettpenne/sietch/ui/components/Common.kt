@@ -7,6 +7,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.CircularProgressIndicator
@@ -14,18 +16,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.everettpenne.glass.IosType
-import com.everettpenne.glass.TopBarHeight
 import com.everettpenne.glass.frostedGlass
 import com.everettpenne.glass.glassPalette
 import com.everettpenne.glass.glassSurface
@@ -44,14 +52,6 @@ interface Navigator {
     fun openSearch()
     fun openSettings()
 }
-
-/** The top inset for a page under a floating header: the status bar (content is drawn edge-to-edge) plus the kit's [TopBarHeight]. */
-@Composable
-fun topContentPadding(): Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TopBarHeight
-
-/** The bottom inset for a page above the floating tab bar: the navigation bar plus the tab bar and a little breathing room. */
-@Composable
-fun bottomContentPadding(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 104.dp
 
 @Composable
 fun LoadingRow() = Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp) }
@@ -123,6 +123,7 @@ fun FileRow(
     selected: Boolean = false,
     subtitle: String? = null,
     trailing: @Composable (() -> Unit)? = null,
+    thumbnailUri: String? = null,
 ) {
     val meta = buildList {
         if (!isDirectory) add(formatBytes(size))
@@ -133,7 +134,7 @@ fun FileRow(
         .combinedClickable(onClick = onClick, onLongClick = onLongClick)
         .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        FileIcon(name, mime, isDirectory)
+        RowLeading(name, mime, isDirectory, thumbnailUri)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 color = if (selected) Sietch.accent else MaterialTheme.colorScheme.onSurface)
@@ -144,16 +145,36 @@ fun FileRow(
     }
 }
 
+/** The row's leading tile: a live thumbnail for images, the pastel kind icon otherwise (and beneath a thumbnail that has not loaded). */
+@Composable
+private fun RowLeading(name: String, mime: String?, isDirectory: Boolean, thumbnailUri: String?) {
+    if (thumbnailUri != null && mime?.startsWith("image/") == true) {
+        Box(Modifier.size(40.dp)) {
+            FileIcon(name, mime, isDirectory)
+            AsyncImage(model = thumbnailUri, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize().clip(RoundedCornerShape(10.dp)))
+        }
+    } else FileIcon(name, mime, isDirectory)
+}
+
 /** A glass text field: the search box. */
 @Composable
 fun GlassTextField(
     value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier,
     leading: ImageVector = Icons.Rounded.Search, imeAction: ImeAction = ImeAction.Search, onSubmit: () -> Unit = {},
+    autoFocus: Boolean = false,
 ) {
     val ink = glassPalette().ink
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) { if (autoFocus) focusRequester.requestFocus() }
+    val submit = { onSubmit(); keyboard?.hide() }
     BasicTextField(value, onValueChange, singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink), cursorBrush = SolidColor(ink),
-        modifier = modifier.fillMaxWidth().height(52.dp).frostedGlass(RoundedCornerShape(percent = 50), lensHeight = 10f, lensAmount = 20f),
+        modifier = modifier.fillMaxWidth().height(52.dp).frostedGlass(RoundedCornerShape(percent = 50), lensHeight = 10f, lensAmount = 20f)
+            .focusRequester(focusRequester),
+        keyboardOptions = KeyboardOptions(imeAction = imeAction),
+        keyboardActions = KeyboardActions(onDone = { submit() }, onGo = { submit() }, onSearch = { submit() }, onSend = { submit() }),
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(leading, null, tint = ink.copy(alpha = .6f), modifier = Modifier.size(20.dp))

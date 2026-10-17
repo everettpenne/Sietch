@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +43,11 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
         results = withContext(Dispatchers.IO) {
             val out = ArrayList<SearchHit>()
             for (loc in locations) {
-                out += graph.fileSystem.search(graph.fileSystem.rootOf(loc.uri), q, showHidden)
+                val root = graph.fileSystem.rootOf(loc.uri)
+                for (hit in graph.fileSystem.search(root, q, showHidden)) {
+                    out += hit.copy(path = if (hit.path.isEmpty()) loc.name else "${loc.name}/${hit.path}")
+                    if (out.size >= 400) break
+                }
                 if (out.size >= 400) break
             }
             out
@@ -55,7 +61,7 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
             graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = true)
             nav.openFolder(listOf(FolderStep(node.folder.treeUri, node.documentId, node.name)))
         } else {
-            graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = false)
+            graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = false, mime = node.mime)
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(graph.fileSystem.documentUri(node), node.mime ?: "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -68,8 +74,8 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
         Column(Modifier.align(Alignment.TopCenter)) {
             GlassTopBar("Search", onBack = if (showBack) onBack else null)
         }
-    }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 8.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
+    }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 8.dp, bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 GlassTextField(query, { query = it }, "Search every folder", modifier = Modifier.fillMaxWidth())
@@ -80,10 +86,15 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
                 query.isBlank() -> item { EmptyState(Icons.Rounded.Search, "Search your folders", "Matches by file or folder name.") }
                 searching -> item { LoadingRow() }
                 results.isNullOrEmpty() -> item { EmptyState(Icons.Rounded.SearchOff, "Nothing found", "No name contains \"$query\".") }
-                else -> items(results.orEmpty(), key = { "${it.node.folder.treeUri}:${it.node.documentId}" }) { hit ->
-                    FileRow(hit.node.name, hit.node.mime, hit.node.isDirectory, hit.node.size, hit.node.modified,
-                        onClick = { openHit(hit) },
-                        subtitle = hit.path.ifEmpty { "folder root" })
+                else -> {
+                    val hits = results.orEmpty()
+                    item { Text("${hits.size} ${if (hits.size == 1) "result" else "results"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp)) }
+                    items(hits, key = { "${it.node.folder.treeUri}:${it.node.documentId}" }) { hit ->
+                        FileRow(hit.node.name, hit.node.mime, hit.node.isDirectory, hit.node.size, hit.node.modified,
+                            onClick = { openHit(hit) },
+                            subtitle = hit.path,
+                            thumbnailUri = if (hit.node.mime?.startsWith("image/") == true) graph.fileSystem.documentUri(hit.node).toString() else null)
+                    }
                 }
             }
         }

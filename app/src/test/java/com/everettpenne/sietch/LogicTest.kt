@@ -28,6 +28,14 @@ class LogicTest {
     }
 
     @Test
+    fun kindLabelsAreHuman() {
+        assertEquals("Folder", kindLabel("Downloads", null, true))
+        assertEquals("Image", kindLabel("photo.png", "image/png", false))
+        assertEquals("PDF", kindLabel("report.pdf", null, false))
+        assertEquals("File", kindLabel("blob.xyz", null, false))
+    }
+
+    @Test
     fun byteSizes() {
         assertEquals("0 B", formatBytes(0))
         assertEquals("512 B", formatBytes(512))

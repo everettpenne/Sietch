@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.everettpenne.glass.*
 import com.everettpenne.sietch.data.Location
@@ -28,6 +29,7 @@ import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
 import com.everettpenne.sietch.ui.theme.Sietch
 import com.everettpenne.sietch.util.FolderStep
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** An ACTION_OPEN_DOCUMENT_TREE that also returns the flags the provider actually granted, so only those are persisted. */
@@ -52,6 +54,10 @@ fun PlacesScreen(nav: Navigator) {
     val locations by graph.locations.items.collectAsState()
     val scope = rememberCoroutineScope()
 
+    var renaming by remember { mutableStateOf<Location?>(null) }
+    var removing by remember { mutableStateOf<Location?>(null) }
+    var msg by remember { mutableStateOf<String?>(null) }
+
     val addLocation = rememberLauncherForActivityResult(OpenTree) { result ->
         if (result == null) return@rememberLauncherForActivityResult
         val (uri, flags) = result
@@ -59,10 +65,8 @@ fun PlacesScreen(nav: Navigator) {
         val name = graph.fileSystem.treeName(uri.toString())
         graph.locations.add(name, uri.toString())
         graph.recents.record(name, uri.toString(), graph.fileSystem.rootOf(uri.toString()).documentId, isDirectory = true)
+        msg = "Added $name"
     }
-
-    var renaming by remember { mutableStateOf<Location?>(null) }
-    var removing by remember { mutableStateOf<Location?>(null) }
 
     GlassScreen(bars = {
         Column(Modifier.align(Alignment.TopCenter)) {
@@ -71,8 +75,8 @@ fun PlacesScreen(nav: Navigator) {
                 GlassIconButton(Icons.Rounded.CreateNewFolder, "Add a folder", { addLocation.launch(Unit) })
             })
         }
-    }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = topContentPadding() + 16.dp, bottom = bottomContentPadding(), start = 16.dp, end = 16.dp),
+    }) { contentPadding ->
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 16.dp, bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (locations.isEmpty()) item {
                 EmptyState(Icons.Rounded.FolderOpen, "No folders yet", "Tap the folder button above to grant Sietch a folder. It asks for nothing else.")
@@ -87,6 +91,10 @@ fun PlacesScreen(nav: Navigator) {
                 Text("Sietch reads nothing until you grant it a folder. Grants are stored on this phone only.", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
             }
+        }
+        msg?.let { m ->
+            Msg(m, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp))
+            LaunchedEffect(m) { delay(2400); msg = null }
         }
     }
 
@@ -133,7 +141,8 @@ private fun RenameLocationSheet(location: Location, onDismiss: () -> Unit, onSav
     GlassSheet(onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Rename folder", style = MaterialTheme.typography.titleLarge)
-            GlassTextField(name, { name = it }, "Folder name", leading = Icons.Rounded.DriveFileRenameOutline)
+            GlassTextField(name, { name = it }, "Folder name", leading = Icons.Rounded.DriveFileRenameOutline, imeAction = ImeAction.Done, autoFocus = true,
+                onSubmit = { if (name.isNotBlank()) onSave(name.trim()) })
             GlassButton("Save", { onSave(name.trim()) }, Modifier.fillMaxWidth(), enabled = name.isNotBlank(), prominent = true)
             Spacer(Modifier.height(8.dp))
         }
