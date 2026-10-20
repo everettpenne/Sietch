@@ -145,14 +145,23 @@ fun FileRow(
     }
 }
 
-/** The row's leading tile: a live thumbnail for images, the pastel kind icon otherwise (and beneath a thumbnail that has not loaded). */
+/** Whether a file has a picture of its own to show: pictures, and video (its first frame). */
+fun hasThumbnail(name: String, mime: String?): Boolean = when (com.everettpenne.sietch.data.categoryOf(name, mime, false)) {
+    "image" -> mime != "image/svg+xml" && !name.lowercase().endsWith(".svg")
+    "video" -> true
+    else -> false
+}
+
+/** The row's leading tile: a live thumbnail for pictures and video, the pastel kind icon otherwise (and beneath a thumbnail that has not loaded). */
 @Composable
 private fun RowLeading(name: String, mime: String?, isDirectory: Boolean, thumbnailUri: String?) {
-    if (thumbnailUri != null && mime?.startsWith("image/") == true) {
+    if (thumbnailUri != null && !isDirectory && hasThumbnail(name, mime)) {
         Box(Modifier.size(40.dp)) {
             FileIcon(name, mime, isDirectory)
             AsyncImage(model = thumbnailUri, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize().clip(RoundedCornerShape(10.dp)))
+            if (com.everettpenne.sietch.data.categoryOf(name, mime, false) == "video")
+                Icon(Icons.Rounded.PlayCircle, null, tint = Color.White, modifier = Modifier.align(Alignment.Center).size(18.dp))
         }
     } else FileIcon(name, mime, isDirectory)
 }

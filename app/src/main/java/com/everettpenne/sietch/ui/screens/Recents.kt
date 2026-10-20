@@ -28,17 +28,12 @@ fun RecentsScreen(nav: Navigator) {
     val graph = context.graph
     val recents by graph.recents.items.collectAsState()
     var msg by remember { mutableStateOf<String?>(null) }
+    val opener = rememberOpener()
 
     fun open(recent: Recent) {
         graph.recents.record(recent.name, recent.treeUri, recent.documentId, recent.isDirectory, recent.mime)
         if (recent.isDirectory) nav.openFolder(listOf(FolderStep(recent.treeUri, recent.documentId, recent.name)))
-        else {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(graph.fileSystem.documentUri(recent.treeUri, recent.documentId), recent.mime ?: "*/*")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            runCatching { context.startActivity(intent) }.onFailure { msg = "No app can open ${recent.name}" }
-        }
+        else if (!opener.open(graph.fileSystem.documentUri(recent.treeUri, recent.documentId), recent.name, recent.mime)) msg = "No app can open ${recent.name}"
     }
 
     GlassScreen(bars = {
@@ -56,10 +51,10 @@ fun RecentsScreen(nav: Navigator) {
                 FileRow(recent.name, recent.mime, recent.isDirectory, 0L, recent.visitedAt,
                     onClick = { open(recent) },
                     subtitle = "${kindLabel(recent.name, recent.mime, recent.isDirectory)}  ·  ${formatRelative(recent.visitedAt)}",
-                    thumbnailUri = if (recent.mime?.startsWith("image/") == true) graph.fileSystem.documentUri(recent.treeUri, recent.documentId).toString() else null,
+                    thumbnailUri = if (hasThumbnail(recent.name, recent.mime)) graph.fileSystem.documentUri(recent.treeUri, recent.documentId).toString() else null,
                     trailing = {
                         Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                            androidx.compose.material3.Icon(if (recent.isDirectory) Icons.Rounded.ChevronRight else Icons.Rounded.OpenInNew, null,
+                            androidx.compose.material3.Icon(if (recent.isDirectory || com.everettpenne.sietch.data.inAppViewer(recent.name, recent.mime) != com.everettpenne.sietch.data.InApp.NONE) Icons.Rounded.ChevronRight else Icons.Rounded.OpenInNew, null,
                                 tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     })

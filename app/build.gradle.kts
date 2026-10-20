@@ -67,6 +67,8 @@ dependencies {
     implementation("com.everettpenne:media")
     // Row thumbnails for images (same version the Glass media module already pulls in).
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    // First-frame thumbnails for video files.
+    implementation("io.coil-kt.coil3:coil-video:3.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.core:core-ktx:1.16.0")

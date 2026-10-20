@@ -29,7 +29,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.everettpenne.glass.*
-import com.everettpenne.media.LocalImageViewer
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import com.everettpenne.sietch.data.*
 import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
@@ -120,7 +126,8 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
     var busy by remember { mutableStateOf<String?>(null) }
     var msg by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val openImages = LocalImageViewer.current
+    val opener = rememberOpener()
+    val gallery by graph.settings.gallery.collectAsState()
 
     fun reload() { nonce++ }
     fun toggle(id: String) { selected = if (id in selected) selected - id else selected + id }
@@ -188,11 +195,9 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
             nav.openFolder(steps + FolderStep(folder.treeUri, node.documentId, node.name))
         } else {
             graph.recents.record(node.name, folder.treeUri, node.documentId, isDirectory = false, mime = node.mime)
-            if (node.mime?.startsWith("image/") == true) {
-                val images = visible.filter { it.mime?.startsWith("image/") == true }
-                val start = images.indexOfFirst { it.documentId == node.documentId }.coerceAtLeast(0)
-                openImages(images.map { graph.fileSystem.documentUri(it).toString() }, start)
-            } else openWith(node)
+            // a picture opens among the folder's other pictures, in the order shown, so swiping walks the folder
+            val pictures = visible.filter { !it.isDirectory && inAppViewer(it.name, it.mime) == InApp.IMAGE }.map { graph.fileSystem.documentUri(it).toString() }
+            if (!opener.open(graph.fileSystem.documentUri(node), node.name, node.mime, pictures)) msg = "No app can open ${node.name}"
         }
     }
 
@@ -200,6 +205,7 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
         BrowseTopBar(steps, onBack, onJump = { i -> nav.backTo(steps.subList(0, i + 1)) }) {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 GlassIconButton(Icons.Rounded.Search, "Search", nav::openSearch)
+                GlassIconButton(if (gallery) Icons.Rounded.ViewList else Icons.Rounded.GridView, if (gallery) "Show as list" else "Show as gallery", { graph.settings.setGallery(!gallery) })
                 GlassIconButton(Icons.Rounded.Sort, "Sort", { sortMenu = true })
                 GlassIconButton(Icons.Rounded.MoreVert, "More", { moreMenu = true })
             }
@@ -241,6 +247,15 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                         if (onlyHidden) "Everything in this folder is hidden." else if (showHidden) "This folder is empty." else "This folder is empty, or its only entries are hidden.")
                     if (onlyHidden) GlassButton("Show hidden files", { graph.settings.setShowHidden(true) }, prominent = false)
                 }
+            } else if (gallery) LazyVerticalGrid(GridCells.Adaptive(108.dp), Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = (if (selected.isNotEmpty()) 120.dp else 40.dp) + contentPadding.calculateBottomPadding(), start = 12.dp, end = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                gridItems(visible, key = { it.documentId }) { node ->
+                    GalleryTile(node, if (!node.isDirectory && hasThumbnail(node.name, node.mime)) graph.fileSystem.documentUri(node).toString() else null,
+                        selected = node.documentId in selected, selecting = selected.isNotEmpty(),
+                        onClick = { if (selected.isNotEmpty()) toggle(node.documentId) else open(node) },
+                        onLongClick = { if (selected.isEmpty()) selected = setOf(node.documentId) else toggle(node.documentId) })
+                }
             } else LazyColumn(Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = contentPadding.calculateTopPadding(), bottom = (if (selected.isNotEmpty()) 120.dp else 40.dp) + contentPadding.calculateBottomPadding(), start = 12.dp, end = 12.dp)) {
                 items(visible, key = { it.documentId }) { node ->
@@ -248,11 +263,11 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
                         onClick = { if (selected.isNotEmpty()) toggle(node.documentId) else open(node) },
                         onLongClick = { if (selected.isEmpty()) selected = setOf(node.documentId) else toggle(node.documentId) },
                         selected = node.documentId in selected,
-                        thumbnailUri = if (node.mime?.startsWith("image/") == true) graph.fileSystem.documentUri(node).toString() else null,
+                        thumbnailUri = if (!node.isDirectory && hasThumbnail(node.name, node.mime)) graph.fileSystem.documentUri(node).toString() else null,
                         trailing = {
                             if (selected.isNotEmpty()) SelectCircle(node.documentId in selected)
                             else NodeMenu(node,
-                                onOpen = { open(node) },
+                                onOpen = { if (node.isDirectory) open(node) else openWith(node) },
                                 onRename = { renaming = node },
                                 onDetails = { details = node },
                                 onShare = { share(listOf(node)) },
@@ -289,6 +304,33 @@ fun BrowseScreen(token: String, nav: Navigator, onBack: () -> Unit) {
         confirmLabel = "Delete", destructive = true, onConfirm = { deleting = null; doDelete(nodes) }, onDismiss = { deleting = null }) }
     copyMove?.let { (nodes, move) -> FolderPicker(onPick = { copyMove = null; doCopyMove(nodes, move, it) }, onDismiss = { copyMove = null }) }
     busy?.let { BusyOverlay(it) }
+}
+
+/**
+ * One entry in the gallery: a square of the picture or the video's first frame (with a play mark), or, for folders and other files, the kind icon
+ * with the name beneath. Selection works as in the list: long-press starts it, and a tick shows what is chosen.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GalleryTile(node: Node, thumbnail: String?, selected: Boolean, selecting: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Box(Modifier.aspectRatio(1f).clip(shape).background(MaterialTheme.colorScheme.surfaceVariant)
+        .then(if (selected) Modifier.border(3.dp, Sietch.accent, shape) else Modifier)
+        .combinedClickable(onClickLabel = node.name, onClick = onClick, onLongClick = onLongClick)) {
+        if (thumbnail != null) {
+            FileIcon(node.name, node.mime, false, Modifier.align(Alignment.Center))
+            AsyncImage(thumbnail, node.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (node.category() == "video") Icon(Icons.Rounded.PlayCircle, null, tint = Color.White, modifier = Modifier.align(Alignment.Center).size(34.dp))
+        } else Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            FileIcon(node.name, node.mime, node.isDirectory)
+            Spacer(Modifier.height(6.dp))
+            Text(node.name, style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+        if (selecting) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp).clip(CircleShape)
+            .background(if (selected) Sietch.accent else Color.Black.copy(alpha = .35f)).border(1.5.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
+            if (selected) Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+        }
+    }
 }
 
 private fun label(s: SortBy) = when (s) {

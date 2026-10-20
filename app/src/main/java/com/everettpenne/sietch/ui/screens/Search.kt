@@ -55,6 +55,7 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
         searching = false
     }
 
+    val opener = rememberOpener()
     fun openHit(hit: SearchHit) {
         val node = hit.node
         if (node.isDirectory) {
@@ -62,11 +63,7 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
             nav.openFolder(listOf(FolderStep(node.folder.treeUri, node.documentId, node.name)))
         } else {
             graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = false, mime = node.mime)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(graph.fileSystem.documentUri(node), node.mime ?: "*/*")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            runCatching { context.startActivity(intent) }.onFailure { msg = "No app can open ${node.name}" }
+            if (!opener.open(graph.fileSystem.documentUri(node), node.name, node.mime)) msg = "No app can open ${node.name}"
         }
     }
 
@@ -93,7 +90,7 @@ fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) 
                         FileRow(hit.node.name, hit.node.mime, hit.node.isDirectory, hit.node.size, hit.node.modified,
                             onClick = { openHit(hit) },
                             subtitle = hit.path,
-                            thumbnailUri = if (hit.node.mime?.startsWith("image/") == true) graph.fileSystem.documentUri(hit.node).toString() else null)
+                            thumbnailUri = if (hasThumbnail(hit.node.name, hit.node.mime)) graph.fileSystem.documentUri(hit.node).toString() else null)
                     }
                 }
             }

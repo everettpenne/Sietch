@@ -10,10 +10,13 @@ class Settings(context: Context) {
     val showHidden = MutableStateFlow(prefs.getBoolean("showHidden", false))
     val foldersFirst = MutableStateFlow(prefs.getBoolean("foldersFirst", true))
     val sortBy = MutableStateFlow(SortBy.valueOf(prefs.getString("sortBy", SortBy.NAME.name) ?: SortBy.NAME.name))
+    /** Folders show as a grid of thumbnails (a gallery) instead of a list. */
+    val gallery = MutableStateFlow(prefs.getBoolean("gallery", false))
     val sortOrder = MutableStateFlow(SortOrder.valueOf(prefs.getString("sortOrder", SortOrder.ASC.name) ?: SortOrder.ASC.name))
 
     fun setShowHidden(v: Boolean) { showHidden.value = v; prefs.edit().putBoolean("showHidden", v).apply() }
     fun setFoldersFirst(v: Boolean) { foldersFirst.value = v; prefs.edit().putBoolean("foldersFirst", v).apply() }
     fun setSortBy(v: SortBy) { sortBy.value = v; prefs.edit().putString("sortBy", v.name).apply() }
+    fun setGallery(v: Boolean) { gallery.value = v; prefs.edit().putBoolean("gallery", v).apply() }
     fun setSortOrder(v: SortOrder) { sortOrder.value = v; prefs.edit().putString("sortOrder", v.name).apply() }
 }

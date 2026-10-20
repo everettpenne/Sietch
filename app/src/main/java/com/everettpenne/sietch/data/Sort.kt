@@ -6,6 +6,23 @@ enum class SortBy { NAME, SIZE, MODIFIED, TYPE }
 enum class SortOrder { ASC, DESC }
 
 /** The broad kind of a file, used to group by type and to pick its icon and colour. */
+private val IMAGE_EXT = listOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".avif", ".bmp")
+private val VIDEO_EXT = listOf(".mp4", ".m4v", ".mkv", ".webm", ".mov", ".3gp", ".ts")
+private val AUDIO_EXT = listOf(".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".wav")
+
+/** Where Sietch shows a file itself rather than handing it to another app. */
+enum class InApp { IMAGE, PLAYER, NONE }
+
+/**
+ * Pictures open in the built-in viewer (swiping through the folder's other pictures), video and sound in the built-in player, and everything else
+ * in whichever app the system picks. SVG goes out too: the viewer draws bitmaps only.
+ */
+fun inAppViewer(name: String, mime: String?): InApp = when (categoryOf(name, mime, false)) {
+    "image" -> if (mime == "image/svg+xml" || name.lowercase(Locale.ROOT).endsWith(".svg")) InApp.NONE else InApp.IMAGE
+    "video", "audio" -> InApp.PLAYER
+    else -> InApp.NONE
+}
+
 fun categoryOf(name: String, mime: String?, isDirectory: Boolean): String {
     if (isDirectory) return "folder"
     val m = mime.orEmpty()
@@ -14,6 +31,10 @@ fun categoryOf(name: String, mime: String?, isDirectory: Boolean): String {
         m.startsWith("image/") -> "image"
         m.startsWith("video/") -> "video"
         m.startsWith("audio/") -> "audio"
+        // providers that do not know a type report application/octet-stream; the name still tells
+        IMAGE_EXT.any { n.endsWith(it) } -> "image"
+        VIDEO_EXT.any { n.endsWith(it) } -> "video"
+        AUDIO_EXT.any { n.endsWith(it) } -> "audio"
         m == "application/pdf" || n.endsWith(".pdf") -> "pdf"
         m == "text/plain" || n.endsWith(".txt") || n.endsWith(".md") || n.endsWith(".log") -> "text"
         m.startsWith("text/") || n.endsWith(".xml") || n.endsWith(".json") || n.endsWith(".csv") -> "text"

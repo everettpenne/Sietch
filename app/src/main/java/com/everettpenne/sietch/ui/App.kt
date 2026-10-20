@@ -70,6 +70,8 @@ fun SietchRoot() {
         })
 
         CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, com.everettpenne.media.LocalImageViewer provides { urls, i -> viewer = urls to i }, LocalTabBar provides tabBar) {
+        // the built-in player for video and sound files (Glass's, with a player of its own)
+        com.everettpenne.media.VideoViewerHost {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any
             // glass control inside them sample a layer that contains it, which sends the renderer into endless recursion.
             val pageBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
@@ -86,7 +88,12 @@ fun SietchRoot() {
                     }
                 }
             }
+            // In picture-in-picture the small window shows only the video.
+            if (com.everettpenne.media.VideoPip.active) com.everettpenne.media.VideoPip.player?.let {
+                com.everettpenne.media.VideoSurface(it, Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black))
+            }
             viewer?.let { (urls, i) -> com.everettpenne.media.ImageViewer(urls, i) { viewer = null } }
+        }
         }
     }
 }
