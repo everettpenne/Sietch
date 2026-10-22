@@ -15,6 +15,10 @@ class InAppViewerTest {
 
     @Test fun everythingElseGoesToAnotherApp() {
         assertEquals(InApp.NONE, inAppViewer("doc.pdf", "application/pdf"))
+        assertEquals("saved pages open in the browser, read-only", InApp.WEB, inAppViewer("page.html", "text/html"))
+        assertEquals(InApp.WEB, inAppViewer("Saved Page.HTM", null))
+        assertEquals("web shortcuts open where they point", InApp.WEB, inAppViewer("GrapheneOS.url", null))
+        assertEquals(InApp.WEB, inAppViewer("link.webloc", "application/octet-stream"))
         assertEquals(InApp.NONE, inAppViewer("logo.svg", "image/svg+xml"))
         assertEquals(InApp.NONE, inAppViewer("notes.txt", "text/plain"))
     }

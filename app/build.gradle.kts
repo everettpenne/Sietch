@@ -17,8 +17,8 @@ android {
         applicationId = "com.everettpenne.sietch"
         minSdk = 31
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.4.0"
+        versionCode = 8
+        versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -65,6 +65,8 @@ dependencies {
     implementation("com.everettpenne:updater")
     // Full-screen image viewer: also ../Glass.
     implementation("com.everettpenne:media")
+    // The suite's built-in browser (Glass): saved web pages and web shortcuts.
+    implementation("com.everettpenne:browser")
     // Row thumbnails for images (same version the Glass media module already pulls in).
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
     // First-frame thumbnails for video files.

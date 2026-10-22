@@ -49,9 +49,10 @@ fun SietchRoot() {
                 override fun openFolder(steps: List<FolderStep>) = navController.navigate(Routes.browse(steps))
                 override fun backTo(steps: List<FolderStep>) {
                     val token = RouteCodec.path(steps)
-                    val stack = navController.currentBackStack.value
-                    val idx = stack.indexOfLast { it.destination.route == Routes.BROWSE && it.arguments?.getString("token") == token }
-                    if (idx >= 0) navController.popBackStack(stack[idx].destination.id, inclusive = false)
+                    // Every folder screen shares one destination, so popping "to the destination" would stop at the nearest folder, not this one.
+                    // Screens are popped one at a time until this folder is on top (never past the first screen), using only public API.
+                    fun isTarget(e: androidx.navigation.NavBackStackEntry?) = e?.destination?.route == Routes.BROWSE && e.arguments?.getString("token") == token
+                    while (!isTarget(navController.currentBackStackEntry) && navController.previousBackStackEntry != null) navController.popBackStack()
                 }
                 override fun openSearch() = navController.navigate(Routes.SEARCH) { launchSingleTop = true }
                 override fun openSettings() = navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
@@ -71,6 +72,8 @@ fun SietchRoot() {
 
         CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, com.everettpenne.media.LocalImageViewer provides { urls, i -> viewer = urls to i }, LocalTabBar provides tabBar) {
         // the built-in player for video and sound files (Glass's, with a player of its own)
+        // Saved web pages and web shortcuts open in the suite's browser (Glass), over the app.
+        com.everettpenne.browser.BrowserHost {
         com.everettpenne.media.VideoViewerHost {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any
             // glass control inside them sample a layer that contains it, which sends the renderer into endless recursion.
@@ -93,6 +96,7 @@ fun SietchRoot() {
                 com.everettpenne.media.VideoSurface(it, Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black))
             }
             viewer?.let { (urls, i) -> com.everettpenne.media.ImageViewer(urls, i) { viewer = null } }
+        }
         }
         }
     }

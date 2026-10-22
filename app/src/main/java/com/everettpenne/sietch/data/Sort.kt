@@ -11,13 +11,20 @@ private val VIDEO_EXT = listOf(".mp4", ".m4v", ".mkv", ".webm", ".mov", ".3gp", 
 private val AUDIO_EXT = listOf(".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".wav")
 
 /** Where Sietch shows a file itself rather than handing it to another app. */
-enum class InApp { IMAGE, PLAYER, NONE }
+/** Which of Sietch's own viewers opens a file: pictures, the player, the web viewer (saved pages and web shortcuts), or none (another app). */
+enum class InApp { IMAGE, PLAYER, WEB, NONE }
+
+/** Saved web pages, shown read-only in the built-in browser. */
+val PAGE_EXTENSIONS = setOf("html", "htm", "xhtml")
+/** Web shortcut files (Windows .url, macOS .webloc, Linux .desktop links), opened at the address they hold. */
+val SHORTCUT_EXTENSIONS = setOf("url", "webloc")
 
 /**
  * Pictures open in the built-in viewer (swiping through the folder's other pictures), video and sound in the built-in player, and everything else
  * in whichever app the system picks. SVG goes out too: the viewer draws bitmaps only.
  */
-fun inAppViewer(name: String, mime: String?): InApp = when (categoryOf(name, mime, false)) {
+fun inAppViewer(name: String, mime: String?): InApp = if (name.substringAfterLast('.', "").lowercase(Locale.ROOT).let { it in PAGE_EXTENSIONS || it in SHORTCUT_EXTENSIONS }) InApp.WEB
+    else when (categoryOf(name, mime, false)) {
     "image" -> if (mime == "image/svg+xml" || name.lowercase(Locale.ROOT).endsWith(".svg")) InApp.NONE else InApp.IMAGE
     "video", "audio" -> InApp.PLAYER
     else -> InApp.NONE
