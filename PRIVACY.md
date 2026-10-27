@@ -6,6 +6,7 @@ Sietch is a file manager for GrapheneOS. A file manager needs wide access to be 
 
 - **Photos, videos and audio** (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO`, and `READ_MEDIA_VISUAL_USER_SELECTED` so Android 14+ can offer partial access): read access to the media library, for the Images, Videos and Audio categories, Recents and Search. Asked in context, with Android's own prompt.
 - **All files access** (`MANAGE_EXTERNAL_STORAGE`): every folder on internal storage. This is the broadest permission on the phone and the one to think about. It is **off until you switch it on**, through Android's own settings screen, and you can turn it off there at any time. Sietch works in a reduced way without it and tells you what is missing.
+- **Playing in the background** (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`): the player runs in a media service so a sound file keeps playing when you leave the app, and a video does too when you turn on "Keep playing when I leave". Android shows the media notification (the notification permission is asked for when you turn that on). The service is not exported: no other app can control it. Closing the player stops it.
 - The shared update library adds `INTERNET` (only to ask `https://api.github.com/repos/everettpenne/Sietch/releases` whether a newer release exists) and `REQUEST_INSTALL_PACKAGES` (so it can hand a downloaded APK to the system installer; you still confirm the install yourself).
 
 There is no contacts, location, phone, camera, microphone or account access.

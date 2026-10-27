@@ -9,7 +9,7 @@ Sietch is the Fremen name for a hidden desert stronghold — a safe place to kee
 - **Home:** how full the phone is, your files by category (Images, Videos, Audio, Documents, Downloads, Apps, Archives) with live counts, the usual folders, the recycle bin and the newest files.
 - **Browse:** every folder on internal storage, as a list or a thumbnail grid, sorted by name, size, date or kind in either direction, with an optional hidden-file view and a tappable breadcrumb.
 - **Recycle bin:** deleting moves a file aside instead of removing it. Restore it, delete it for good, or let it expire (7, 15 or 30 days, your choice). It can be switched off.
-- **Player:** video and sound play in-app with the controls of a phone's own player: swipe to seek, brightness on the left and volume on the right, hold for 2×, speed, audio and subtitle tracks (and subtitle files beside the video), fit or fill, repeat, lock, picture-in-picture, next and previous through the folder, and it remembers where you stopped.
+- **Player:** video and sound play in-app with the controls of a phone's own player: swipe to seek, brightness on the left and volume on the right, hold for 2×, speed, audio and subtitle tracks (and subtitle files beside the video), a preview picture while seeking, fit or fill, repeat, lock, picture-in-picture, next and previous through the folder, and it remembers where you stopped. Sound files (and videos, if you turn on "Keep playing when I leave") carry on in the background with a media notification.
 - **Act on files:** open them with the right app, preview pictures, and read saved web pages in-app; rename, share, copy or move (with a folder picker), see details, make folders, and select several at once.
 - **Recents and Search:** the newest files first, and a search by file name.
 - **Settings:** access, sorting, the recycle bin, and an in-app update check.
@@ -21,6 +21,7 @@ Sietch 1.0 is a full file manager, so unlike earlier versions it asks for wide a
 | Permission | What it unlocks | Without it |
 |---|---|---|
 | Photos, videos and audio (`READ_MEDIA_*`) | The Images, Videos and Audio categories, Recents, Search | Those screens say what is missing and offer the prompt |
+| Notifications and a media service (`POST_NOTIFICATIONS`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`) | The media notification while something plays in the background | Playback still carries on, with no notification |
 | All files access (`MANAGE_EXTERNAL_STORAGE`) | Browsing every folder; the Documents, Downloads, Apps and Archives categories; moving, copying and deleting ordinary files | Home and the media categories still work; Browse asks for it |
 
 Nothing else: no contacts, location, camera, microphone, accounts, analytics or tracking. See [PRIVACY.md](PRIVACY.md).
