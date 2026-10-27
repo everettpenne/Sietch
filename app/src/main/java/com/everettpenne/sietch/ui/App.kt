@@ -89,7 +89,7 @@ fun SietchRoot(deepLink: Uri? = null, onDeepLinkHandled: () -> Unit = {}) {
         CompositionLocalProvider(com.everettpenne.updater.LocalUpdater provides updater, com.everettpenne.media.LocalImageViewer provides { urls, i -> viewer = urls to i }, LocalTabBar provides tabBar) {
         // Saved web pages and web shortcuts open in the suite's browser (Glass), over the app; video and sound in Glass's player.
         com.everettpenne.browser.BrowserHost {
-        com.everettpenne.media.VideoViewerHost {
+        com.everettpenne.player.PlayerHost {
             // The plain page colour is also a glass backdrop, recorded in a sibling of the screens: recording the screens themselves would make any
             // glass control inside them sample a layer that contains it, which sends the renderer into endless recursion.
             val pageBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()

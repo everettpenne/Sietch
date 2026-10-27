@@ -22,6 +22,7 @@ class Opener(
     private val context: Context,
     private val images: (List<String>, Int) -> Unit,
     private val video: (String, String?) -> Unit,
+    private val playlist: (List<com.everettpenne.player.VideoSource>, Int) -> Unit = { _, _ -> },
     private val page: (String, String) -> Unit = { _, _ -> },
     private val web: (String) -> Unit = {},
 ) {
@@ -29,12 +30,18 @@ class Opener(
      * Opens [file]. [pictures] is the set of picture paths to swipe through when this is a picture (the folder's, in the order shown); without it
      * the viewer shows just this one. Returns false when nothing could open it (no app for the type).
      */
-    fun open(file: File, mime: String?, pictures: List<String>? = null): Boolean = when (inAppViewer(file.name, mime)) {
+    fun open(file: File, mime: String?, pictures: List<String>? = null, queue: List<String>? = null): Boolean = when (inAppViewer(file.name, mime)) {
         InApp.IMAGE -> {
             val all = (pictures?.takeIf { file.path in it } ?: listOf(file.path)).map { Uri.fromFile(File(it)).toString() }
             images(all, all.indexOf(Uri.fromFile(file).toString()).coerceAtLeast(0)); true
         }
-        InApp.PLAYER -> { video(Uri.fromFile(file).toString(), file.name); true }
+        InApp.PLAYER -> {
+            // a video opens among the folder's other videos (a sound among its other sounds), in the order shown, so next, previous and auto-play walk the folder
+            val all = queue?.takeIf { file.path in it }
+            if (all != null) playlist(all.map { com.everettpenne.player.VideoSource(Uri.fromFile(File(it)).toString(), File(it).name) }, all.indexOf(file.path))
+            else video(Uri.fromFile(file).toString(), file.name)
+            true
+        }
         InApp.WEB -> { openPage(file, mime); true }
         InApp.NONE -> openWith(file, mime)
     }
@@ -78,7 +85,8 @@ fun rememberOpener(): Opener {
     val context = LocalContext.current
     val images = LocalImageViewer.current
     val video = LocalVideoViewer.current
+    val playlist = com.everettpenne.player.LocalVideoPlaylist.current
     val page = com.everettpenne.browser.LocalHtmlViewer.current
     val web = com.everettpenne.browser.LocalBrowser.current
-    return remember(context, images, video, page, web) { Opener(context, images, video, page, web) }
+    return remember(context, images, video, playlist, page, web) { Opener(context, images, video, playlist, page, web) }
 }

@@ -38,8 +38,8 @@ class FileOps(private val context: Context, private val scope: CoroutineScope, p
         runCatching { MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null) }
     }
 
-    fun open(node: Node, pictures: List<String>? = null) {
-        if (!opener.open(File(node.path), node.mime, pictures)) msg = "No app can open ${node.name}"
+    fun open(node: Node, pictures: List<String>? = null, queue: List<String>? = null) {
+        if (!opener.open(File(node.path), node.mime, pictures, queue)) msg = "No app can open ${node.name}"
     }
 
     fun openWith(node: Node) {

@@ -65,6 +65,8 @@ dependencies {
     implementation("com.everettpenne:updater")
     // Full-screen image viewer: also ../Glass.
     implementation("com.everettpenne:media")
+    // The full-screen video player (gestures, speed, tracks, subtitles, playlist, resume): also ../Glass.
+    implementation("com.everettpenne:player")
     // The suite's built-in browser (Glass): saved web pages and web shortcuts.
     implementation("com.everettpenne:browser")
     // Row thumbnails for images (same version the Glass media module already pulls in).

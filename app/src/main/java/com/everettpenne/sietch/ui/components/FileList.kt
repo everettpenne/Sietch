@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.everettpenne.sietch.data.Node
+import com.everettpenne.sietch.data.category
 import com.everettpenne.sietch.graph
 import com.everettpenne.glass.GlassAlert
 import androidx.compose.ui.platform.LocalContext
@@ -62,7 +63,9 @@ fun FileListBody(
     val bottom = (if (state.selecting) 120.dp else 40.dp) + contentPadding.calculateBottomPadding()
     fun open(n: Node) {
         if (n.isDirectory) onOpenFolder(n)
-        else ops.open(n, nodes.filter { !it.isDirectory && com.everettpenne.sietch.data.inAppViewer(it.name, it.mime) == com.everettpenne.sietch.data.InApp.IMAGE }.map { it.path })
+        else ops.open(n,
+            nodes.filter { !it.isDirectory && com.everettpenne.sietch.data.inAppViewer(it.name, it.mime) == com.everettpenne.sietch.data.InApp.IMAGE }.map { it.path },
+            nodes.filter { !it.isDirectory && com.everettpenne.sietch.data.inAppViewer(it.name, it.mime) == com.everettpenne.sietch.data.InApp.PLAYER && it.category() == n.category() }.map { it.path })
     }
     if (gallery) LazyVerticalGrid(GridCells.Adaptive(108.dp), Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 4.dp, bottom = bottom, start = 12.dp, end = 12.dp),
