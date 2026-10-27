@@ -54,7 +54,7 @@ interface Navigator {
 }
 
 @Composable
-fun LoadingRow() = Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp) }
+fun LoadingRow() = com.everettpenne.glass.GlassSkeleton(count = 3, rowHeight = 52.dp, modifier = Modifier.padding(horizontal = 4.dp))
 
 /** A quiet, self-dismissing glass pill for transient feedback ("Copied 3", "No app can open …"). */
 @Composable
@@ -80,13 +80,8 @@ fun BusyOverlay(text: String) {
 }
 
 @Composable
-fun EmptyState(icon: ImageVector, title: String, message: String) {
-    Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(44.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-    }
-}
+fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, message: String) =
+    com.everettpenne.glass.GlassEmptyState(icon, title, message)
 
 /** The icon and colour for a file, by its kind: the same quiet pastels the other glass apps use for their accents. */
 @Composable
