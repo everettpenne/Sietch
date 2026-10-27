@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets the files the user chooses to open or share be handed to another app as a one-off, read-only content address. Nothing is shared by default. -->
+<paths>
+    <external-path name="storage" path="." />
+</paths>

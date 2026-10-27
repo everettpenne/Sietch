@@ -1,10 +1,7 @@
 package com.everettpenne.sietch.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.MaterialTheme
@@ -14,90 +11,60 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.everettpenne.glass.*
-import com.everettpenne.sietch.data.SearchHit
+import com.everettpenne.sietch.data.Node
 import com.everettpenne.sietch.graph
 import com.everettpenne.sietch.ui.components.*
-import com.everettpenne.sietch.util.FolderStep
+import com.everettpenne.glass.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-/** Search every granted folder at once, by name. Results open their containing folder or, for files, the right app. */
+/** Search by file name across everything the media library has indexed. Folders are not part of that index, so they are not found here. */
 @Composable
 fun SearchScreen(nav: Navigator, onBack: () -> Unit, showBack: Boolean = false) {
-    val context = LocalContext.current
-    val graph = context.graph
-    val locations by graph.locations.items.collectAsState()
+    val graph = LocalContext.current.graph
+    val access by rememberAccess()
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<SearchHit>?>(null) }
+    var results by remember { mutableStateOf<List<Node>?>(null) }
     var searching by remember { mutableStateOf(false) }
-    var msg by remember { mutableStateOf<String?>(null) }
+    val list = rememberListState()
+    val ops = rememberFileOps()
+    var nonce by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(query, locations) {
+    LaunchedEffect(query, access, nonce) {
         if (query.isBlank()) { results = null; searching = false; return@LaunchedEffect }
         searching = true
-        delay(280)
-        val q = query
-        val showHidden = graph.settings.showHidden.value
-        results = withContext(Dispatchers.IO) {
-            val out = ArrayList<SearchHit>()
-            for (loc in locations) {
-                val root = graph.fileSystem.rootOf(loc.uri)
-                for (hit in graph.fileSystem.search(root, q, showHidden)) {
-                    out += hit.copy(path = if (hit.path.isEmpty()) loc.name else "${loc.name}/${hit.path}")
-                    if (out.size >= 400) break
-                }
-                if (out.size >= 400) break
-            }
-            out
-        }
+        delay(250)
+        results = withContext(Dispatchers.IO) { graph.media.search(query) }
         searching = false
     }
 
-    val opener = rememberOpener()
-    fun openHit(hit: SearchHit) {
-        val node = hit.node
-        if (node.isDirectory) {
-            graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = true)
-            nav.openFolder(listOf(FolderStep(node.folder.treeUri, node.documentId, node.name)))
-        } else {
-            graph.recents.record(node.name, node.folder.treeUri, node.documentId, isDirectory = false, mime = node.mime)
-            if (!opener.open(graph.fileSystem.documentUri(node), node.name, node.mime)) msg = "No app can open ${node.name}"
-        }
-    }
-
     GlassScreen(bars = {
-        Column(Modifier.align(Alignment.TopCenter)) {
-            GlassTopBar("Search", onBack = if (showBack) onBack else null)
-        }
+        Column(Modifier.align(Alignment.TopCenter)) { GlassTopBar("Search", onBack = if (showBack) onBack else null) }
+        ListSelectionBar(list, results.orEmpty(), ops)
     }) { contentPadding ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 8.dp, bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp),
+        if (list.selecting && results != null) FileListBody(results.orEmpty(), list, ops, contentPadding, subtitle = { it.path.substringBeforeLast('/').removePrefix(graph.root.path).trimStart('/').ifEmpty { "Internal storage" } })
+        else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = contentPadding.calculateTopPadding() + 8.dp, bottom = contentPadding.calculateBottomPadding(), start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item {
-                GlassTextField(query, { query = it }, "Search every folder", modifier = Modifier.fillMaxWidth())
-            }
-            if (locations.isEmpty()) item {
-                EmptyState(Icons.Rounded.FolderOpen, "No folders to search", "Grant Sietch a folder from Places first.")
-            } else when {
-                query.isBlank() -> item { EmptyState(Icons.Rounded.Search, "Search your folders", "Matches by file or folder name.") }
+            item { GlassTextField(query, { query = it }, "Search your files", modifier = Modifier.fillMaxWidth()) }
+            when {
+                !access.any -> item { AccessPrompt(access, needAllFiles = false, onGranted = { nonce++ }) }
+                query.isBlank() -> item { EmptyState(Icons.Rounded.Search, "Search your files", "Matches by file name.") }
                 searching -> item { LoadingRow() }
-                results.isNullOrEmpty() -> item { EmptyState(Icons.Rounded.SearchOff, "Nothing found", "No name contains \"$query\".") }
+                results.isNullOrEmpty() -> item { EmptyState(Icons.Rounded.SearchOff, "Nothing found", "No file name contains \"$query\".") }
                 else -> {
                     val hits = results.orEmpty()
                     item { Text("${hits.size} ${if (hits.size == 1) "result" else "results"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp)) }
-                    items(hits, key = { "${it.node.folder.treeUri}:${it.node.documentId}" }) { hit ->
-                        FileRow(hit.node.name, hit.node.mime, hit.node.isDirectory, hit.node.size, hit.node.modified,
-                            onClick = { openHit(hit) },
-                            subtitle = hit.path,
-                            thumbnailUri = if (hasThumbnail(hit.node.name, hit.node.mime)) graph.fileSystem.documentUri(hit.node).toString() else null)
+                    items(hits.size, key = { hits[it].path }) { i ->
+                        val n = hits[i]
+                        FileRow(n.name, n.mime, false, n.size, n.modified, onClick = { ops.open(n) }, onLongClick = { list.selected = setOf(n.path) },
+                            subtitle = n.path.substringBeforeLast('/').removePrefix(graph.root.path).trimStart('/').ifEmpty { "Internal storage" },
+                            thumbnailUri = if (hasThumbnail(n.name, n.mime)) "file://${n.path}" else null)
                     }
                 }
             }
         }
-        msg?.let { m ->
-            Msg(m, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp))
-            LaunchedEffect(m) { delay(2400); msg = null }
-        }
+        FileOpsHost(ops)
     }
+    ListDialogs(list, ops, null, onChanged = { nonce++ })
 }

@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      Sietch asks for no storage permissions and no Internet permission of its own. It reads only the folders you
-      hand it through Android's folder picker (Storage Access Framework), and it holds the token the system gives it.
-      The :updater library adds INTERNET and REQUEST_INSTALL_PACKAGES for its "check GitHub releases" feature; that is
-      the app's only network use, and it only ever talks to github.com.
+      Sietch is a file manager, so it can ask for wide access, but only when you turn it on and only for what a feature needs:
+
+      - READ_MEDIA_IMAGES / VIDEO / AUDIO: the Images, Videos and Audio categories, Recents and Search. Asked in context, one prompt.
+      - MANAGE_EXTERNAL_STORAGE ("All files access"): browsing every folder, the Documents, Downloads and Apps categories, and the
+        recycle bin for ordinary files. Off until you switch it on in Settings; Sietch works, in a reduced way, without it.
+
+      There is no contacts, location, phone, camera, microphone or account access, and no analytics or telemetry.
+      The :updater library adds INTERNET and REQUEST_INSTALL_PACKAGES for its "check GitHub releases" feature; that is the app's only
+      network use, and it only ever talks to github.com.
     -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Lets Android 14+ offer "select photos and videos" (partial access) instead of treating Sietch as a legacy app. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
     <application
         android:name=".SietchApp"
@@ -30,10 +42,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Long-press actions: Recents and Search. -->
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
+            <!-- Long-press actions: Search and the recycle bin. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Hands one file at a time to another app, read-only, when you tap Open with or Share. Not exported; access is granted per intent. -->
+        <provider
+            android:name=".SietchFileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

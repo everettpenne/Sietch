@@ -1,38 +1,38 @@
 # Sietch privacy and security
 
-Sietch is a file navigator for GrapheneOS, so its whole design is to expose as little as possible. This is the full list of what it can see, where it goes, and what leaves the phone.
+Sietch is a file manager for GrapheneOS. A file manager needs wide access to be useful, so this is the full list of what it can see, where anything is kept, and what leaves the phone (nothing about your files does).
 
 ## Permissions
 
-Sietch's own manifest declares **no permissions at all** — no storage, no contacts, no location, no camera, no microphone.
+- **Photos, videos and audio** (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO`, and `READ_MEDIA_VISUAL_USER_SELECTED` so Android 14+ can offer partial access): read access to the media library, for the Images, Videos and Audio categories, Recents and Search. Asked in context, with Android's own prompt.
+- **All files access** (`MANAGE_EXTERNAL_STORAGE`): every folder on internal storage. This is the broadest permission on the phone and the one to think about. It is **off until you switch it on**, through Android's own settings screen, and you can turn it off there at any time. Sietch works in a reduced way without it and tells you what is missing.
+- The shared update library adds `INTERNET` (only to ask `https://api.github.com/repos/everettpenne/Sietch/releases` whether a newer release exists) and `REQUEST_INSTALL_PACKAGES` (so it can hand a downloaded APK to the system installer; you still confirm the install yourself).
 
-The shared update library it links in adds exactly two:
-
-- `INTERNET` — only to ask `https://api.github.com/repos/everettpenne/Sietch/releases` whether a newer release exists.
-- `REQUEST_INSTALL_PACKAGES` — so the updater can hand a downloaded APK to the system installer. You must still confirm the install yourself.
-
-That is the entire permission surface.
+There is no contacts, location, phone, camera, microphone or account access.
 
 ## What it can see
 
-Nothing until you act. On the **Places** screen you tap "add a folder" and Android shows its own picker; Sietch receives a token for the folder you chose and its children, and nothing else. It has no way to enumerate the rest of the phone, no path to it, and no permission to ask for it.
-
-Every file operation (list, create, rename, copy, move, delete) is a call against that token. Copying reads the source and writes the destination as ordinary streams through the token. There is no `MANAGE_EXTERNAL_STORAGE` and no `READ_MEDIA_*`/`WRITE_EXTERNAL_STORAGE` fallback.
+With All files access: every file and folder on internal storage that Android lets an app with that permission see (not other apps' private data in `Android/data` or `Android/obb`). It looks only when you open a screen. Categories, Recents and Search read the system's media index, so Sietch does not scan the disk. File contents are read only to show, copy or hand over a file you chose.
 
 ## Where data lives
 
-- **Folder grants**: stored as plain JSON in the app's private storage (`filesDir`), which no other app can read. `allowBackup` and data-extraction are both off, so they are not copied off the device by a backup or a device transfer.
-- **Recents**: the same — a small private JSON file.
-- **Settings**: SharedPreferences, private to the app.
+- **Recycle bin:** deleted items are moved into `Android/data/com.everettpenne.sietch/files/.recycle` on the same storage, with a small index in the app's private storage. Uninstalling Sietch removes them, so empty or restore the bin first if you care about what is in it. Items are removed after your chosen retention period (default 30 days).
+- **Settings:** SharedPreferences, private to the app.
+- `allowBackup` and data extraction are off, so none of this is copied off the device by a backup or device transfer.
+- **Sharing a file** (Share or Open with) hands one file to the app you pick as a one-off, read-only content address. Nothing is shared by default.
 
 ## What leaves the phone
 
-- The update check described above, and nothing else. No analytics, no crash reporting, no account, no server. Sietch never sends a file name, a path, or any content anywhere.
+- The update check above, and nothing else. No analytics, no crash reporting, no account, no server. Sietch never sends a file name, a path, or any content anywhere.
 
-## Deleting access
+## Upgrading from 0.5
 
-Remove a folder on the Places screen and Sietch releases the token and forgets it. Your files are never touched by that action. Deleting a file or folder inside Sietch is permanent and cannot be undone, which is why it always asks first.
+Versions before 1.0 kept a list of folders granted through Android's folder picker. On first launch 1.0 releases those grants and deletes that list, so the system does not keep access nothing in the app can show.
+
+## Deleting
+
+Deleting moves to the recycle bin by default (asked first). With the bin switched off, or when you choose "Delete forever" or "Empty", removal is permanent and cannot be undone.
 
 ## Builds
 
-Releases are built and signed in this repository's workflow and published here. The only APKs to trust are the ones on the Releases page, verified against the published SHA-256 and the signing certificate.
+Releases are built and signed locally and published on this repository's Releases page. The only APKs to trust are the ones there, verified against the published SHA-256 and the signing certificate.

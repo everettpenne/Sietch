@@ -2,7 +2,8 @@
 <resources>
     <string name="app_name">Sietch</string>
     <!-- Shown by launchers that read android:description, and the words Uno matches in search beside the Dune name. -->
-    <string name="app_description">Files in the folders you choose, with no storage permission.</string>
+    <string name="app_description">Browse, organise and recover your files, with a recycle bin and nothing sent anywhere.</string>
     <string name="shortcut_recents">Recents</string>
+    <string name="shortcut_trash">Recycle bin</string>
     <string name="shortcut_search">Search</string>
 </resources>

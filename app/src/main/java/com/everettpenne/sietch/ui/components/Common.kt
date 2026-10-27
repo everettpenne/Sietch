@@ -39,19 +39,8 @@ import com.everettpenne.glass.glassPalette
 import com.everettpenne.glass.glassSurface
 import com.everettpenne.sietch.data.categoryOf
 import com.everettpenne.sietch.ui.theme.Sietch
-import com.everettpenne.sietch.util.FolderStep
 import com.everettpenne.sietch.util.formatBytes
 import com.everettpenne.sietch.util.formatRelative
-
-/** Where a tap goes. Pure callbacks, so screens do not know about navigation. */
-interface Navigator {
-    /** Open a folder, given its full breadcrumb (root first, the folder itself last). */
-    fun openFolder(steps: List<FolderStep>)
-    /** Pop back to an ancestor folder already on the navigation stack, given its breadcrumb. */
-    fun backTo(steps: List<FolderStep>)
-    fun openSearch()
-    fun openSettings()
-}
 
 @Composable
 fun LoadingRow() = com.everettpenne.glass.GlassSkeleton(count = 3, rowHeight = 52.dp, modifier = Modifier.padding(horizontal = 4.dp))

@@ -1,23 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <shortcut
-        android:shortcutId="recents"
-        android:enabled="true"
-        android:shortcutShortLabel="@string/shortcut_recents">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:data="sietch://recents"
-            android:targetPackage="com.everettpenne.sietch"
-            android:targetClass="com.everettpenne.sietch.MainActivity" />
+    <shortcut android:shortcutId="recents" android:enabled="true" android:shortcutShortLabel="@string/shortcut_recents">
+        <intent android:action="android.intent.action.VIEW" android:data="sietch://recents"
+            android:targetPackage="com.everettpenne.sietch" android:targetClass="com.everettpenne.sietch.MainActivity" />
     </shortcut>
-    <shortcut
-        android:shortcutId="search"
-        android:enabled="true"
-        android:shortcutShortLabel="@string/shortcut_search">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:data="sietch://search"
-            android:targetPackage="com.everettpenne.sietch"
-            android:targetClass="com.everettpenne.sietch.MainActivity" />
+    <shortcut android:shortcutId="search" android:enabled="true" android:shortcutShortLabel="@string/shortcut_search">
+        <intent android:action="android.intent.action.VIEW" android:data="sietch://search"
+            android:targetPackage="com.everettpenne.sietch" android:targetClass="com.everettpenne.sietch.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="trash" android:enabled="true" android:shortcutShortLabel="@string/shortcut_trash">
+        <intent android:action="android.intent.action.VIEW" android:data="sietch://trash"
+            android:targetPackage="com.everettpenne.sietch" android:targetClass="com.everettpenne.sietch.MainActivity" />
     </shortcut>
 </shortcuts>

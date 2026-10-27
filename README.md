@@ -1,38 +1,38 @@
 # Sietch
 
-A file navigator for Android with iOS-style liquid glass, in the same minimal style as [Seekur](https://github.com/everettpenne/DuneDdit), [Spice](https://github.com/everettpenne/Spice) and [Thumper](https://github.com/everettpenne/Thumper). It is built for [GrapheneOS](https://grapheneos.org/) on the Google Pixel: a small, offline, permission-free way to look at and organise your files.
+A file manager for Android with iOS-style liquid glass, in the same minimal style as [Seekur](https://github.com/everettpenne/DuneDdit), [Spice](https://github.com/everettpenne/Spice) and [Thumper](https://github.com/everettpenne/Thumper). It is built for [GrapheneOS](https://grapheneos.org/) on the Google Pixel: a small, offline way to browse, organise and recover your files, with a recycle bin and nothing sent anywhere.
 
 Sietch is the Fremen name for a hidden desert stronghold — a safe place to keep your things.
 
 ## What it does
 
-- **Places:** the folders you grant Sietch through Android's own folder picker. It never asks for broad storage access, and it never scans your phone.
-- **Browse:** list a folder, open files and folders, with folders-first sorting by name, size, date or kind, in either direction, and an optional hidden-file view.
-- **Search:** find files and folders by name across every folder you have granted, at once.
-- **Act on files:** open them with the right app, preview images in-app (pinch, swipe, dismiss), rename, share, copy or move to another folder, and delete — with a confirmation, because there is no recycle bin.
-- **Selection:** long-press to select several, then share, copy, move or delete them together.
-- **Recents:** the folders and files you opened, newest first, so the thing you were just looking at is one tap away.
-- **Settings:** default sort, folders-first, hidden files, and an in-app update check.
+- **Home:** how full the phone is, your files by category (Images, Videos, Audio, Documents, Downloads, Apps, Archives) with live counts, the usual folders, the recycle bin and the newest files.
+- **Browse:** every folder on internal storage, as a list or a thumbnail grid, sorted by name, size, date or kind in either direction, with an optional hidden-file view and a tappable breadcrumb.
+- **Recycle bin:** deleting moves a file aside instead of removing it. Restore it, delete it for good, or let it expire (7, 15 or 30 days, your choice). It can be switched off.
+- **Act on files:** open them with the right app, preview pictures, play video and sound, and read saved web pages in-app; rename, share, copy or move (with a folder picker), see details, make folders, and select several at once.
+- **Recents and Search:** the newest files first, and a search by file name.
+- **Settings:** access, sorting, the recycle bin, and an in-app update check.
 
-## Privacy and security, the GrapheneOS way
+## Permissions, and why
 
-Sietch is written for people who care about the surface an app exposes:
+Sietch 1.0 is a full file manager, so unlike earlier versions it asks for wide access, but only when you turn it on and only for what a feature needs:
 
-- **No storage permissions.** It declares none. It uses the Storage Access Framework: you hand it a folder in the system picker, and it can only touch that folder and its children.
-- **No file-path guessing.** Every operation is a single provider call or a plain stream copy through the folder grant. There is no `MANAGE_EXTERNAL_STORAGE`, no `READ_MEDIA_*`, no access to anything you did not choose.
-- **No analytics, no tracking, no accounts.** Nothing about your files ever leaves the phone.
-- **Backups are off**, so the folder grants stay on this device.
-- The one exception is the update check: like Seekur, Spice and Thumper, Sietch asks `github.com` for a newer release when you open it (or on demand in Settings). It sends nothing but a normal HTTPS request. If you prefer, update from the [Releases page](https://github.com/everettpenne/Sietch/releases) and ignore the check.
+| Permission | What it unlocks | Without it |
+|---|---|---|
+| Photos, videos and audio (`READ_MEDIA_*`) | The Images, Videos and Audio categories, Recents, Search | Those screens say what is missing and offer the prompt |
+| All files access (`MANAGE_EXTERNAL_STORAGE`) | Browsing every folder; the Documents, Downloads, Apps and Archives categories; moving, copying and deleting ordinary files | Home and the media categories still work; Browse asks for it |
 
-See [PRIVACY.md](PRIVACY.md) for the full model.
+Nothing else: no contacts, location, camera, microphone, accounts, analytics or tracking. See [PRIVACY.md](PRIVACY.md).
+
+**Coming from 0.5?** Earlier versions worked only inside folders you granted through Android's folder picker, with no storage permission. 1.0 replaces that with All files access. On first launch it releases the old folder grants, so nothing keeps access the app can no longer show. If you want the old, permission-free behaviour, stay on [0.5.2](https://github.com/everettpenne/Sietch/releases/tag/v0.5.2).
 
 ## Install on your phone
 
-Sietch is not on Google Play. Install the APK from the **[Releases page](https://github.com/everettpenne/Sietch/releases/latest)**. It needs **Android 12 or newer** (API 31); Android 13 or newer for the full glass lens.
+Sietch is not on Google Play. Install the APK from the **[Releases page](https://github.com/everettpenne/Sietch/releases/latest)**. It needs **Android 13 or newer** (API 33).
 
 1. On your phone, open the latest release and download **`Sietch-<version>.apk`** (and, if you want to check it, `SHA256SUMS.txt`).
 2. Open the downloaded file. Android will say it can't install apps from this source: tap **Settings** and allow your browser (or the Files app) to **install unknown apps**, then go back and tap **Install**. On GrapheneOS this is the per-app "Install unknown apps" setting; turn it back off afterwards.
-3. Open **Sietch**, go to **Places**, and tap the **folder button** to grant it a folder.
+3. Open **Sietch** and, when it asks, allow media access and/or switch on **All files access** (the Home screen shows what is still off).
 
 To update, install a newer APK over the old one; it is signed with the same key, so your folders and settings stay.
 
@@ -51,7 +51,7 @@ The liquid-glass UI kit (components, theme, type scale) is the separate `Glass` 
 ./gradlew :app:installDebug        # build and install on a connected device
 ```
 
-Requirements: JDK 21, Android SDK 36, Android 12 (API 31) or newer on the device.
+Requirements: JDK 21, Android SDK 36, Android 13 (API 33) or newer on the device.
 
 Release signing comes from the environment (`SIETCH_RELEASE_STORE_FILE`, `_STORE_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD`); without all four the release build is left unsigned.
 
@@ -59,11 +59,11 @@ Release signing comes from the environment (`SIETCH_RELEASE_STORE_FILE`, `_STORE
 
 ```
 app/src/main/java/com/everettpenne/sietch/
-  data/        FileSystem (DocumentsContract), Locations, Recents, Settings, sorting
+  data/        LocalFs (file operations), TrashStore (recycle bin), MediaIndex (categories, recents, search), Access, Settings, sorting
   ui/          root shell, tab bar, routes
-  ui/screens/  Places, Browse, Search, Recents, Settings
-  ui/components/ rows, file icon, search field, settings rows
-  util/        formatting, the folder route codec
+  ui/screens/  Home, Browse, Category, Recents, Search, Recycle bin, Settings
+  ui/components/ rows, file icon, selection bar, sheets, file operations, opener, access prompt
+  util/        formatting
 ```
 
 ## Licence

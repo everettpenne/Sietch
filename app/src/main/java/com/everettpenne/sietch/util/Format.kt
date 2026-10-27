@@ -13,10 +13,9 @@ fun formatBytes(bytes: Long): String {
     return if (value >= 100) "%.0f %s".format(Locale.ROOT, value, units[i]) else "%.1f %s".format(Locale.ROOT, value, units[i])
 }
 
-/** A short relative date for "now-ish" times, and a short date for older ones, as Seekur and Thumper do. */
-fun formatRelative(ms: Long): String {
+/** A short relative date for "now-ish" times, and a short date for older ones. */
+fun formatRelative(ms: Long, now: Long = System.currentTimeMillis()): String {
     if (ms <= 0) return ""
-    val now = System.currentTimeMillis()
     val seconds = (now - ms) / 1000
     if (seconds in 0..59) return "now"
     val minutes = seconds / 60
@@ -28,10 +27,7 @@ fun formatRelative(ms: Long): String {
     return java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(ms))
 }
 
-/**
- * The one-line result of a bulk operation, honest about partial failures: "Copied 3", "Copied 2, 1 failed",
- * "Deleted failed", "Moved 0". [verb] is the past participle ("Copied", "Moved", "Deleted").
- */
+/** The one-line result of a bulk operation, honest about partial failures: "Copied 3", "Copied 2, 1 failed", "Deleted failed". */
 fun opSummary(verb: String, ok: Int, total: Int): String {
     val failed = total - ok
     return when {

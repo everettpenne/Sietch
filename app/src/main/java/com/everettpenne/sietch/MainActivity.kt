@@ -12,12 +12,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.everettpenne.sietch.ui.SietchRoot
 import com.everettpenne.media.VideoPip
 import com.everettpenne.media.enterVideoPip
-import com.everettpenne.sietch.ui.SietchRoot
 
 class MainActivity : ComponentActivity() {
-    /** A launcher shortcut's own address (sietch://recents, ...), handed to the Compose root and cleared once used. */
+    /** A launcher shortcut's own address (sietch://trash, sietch://search), handed to the Compose root and cleared once used. */
     private var deepLink by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
