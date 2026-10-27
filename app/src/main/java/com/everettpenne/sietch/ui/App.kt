@@ -1,5 +1,6 @@
 package com.everettpenne.sietch.ui
 
+import android.net.Uri
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -33,7 +34,7 @@ object Routes {
 }
 
 @Composable
-fun SietchRoot() {
+fun SietchRoot(deepLink: Uri? = null, onDeepLinkHandled: () -> Unit = {}) {
     SietchTheme {
         var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
         val context = LocalContext.current
@@ -44,6 +45,15 @@ fun SietchRoot() {
         com.everettpenne.updater.UpdateDialog(updater, "Sietch")
 
         val navController = rememberNavController()
+        // A launcher shortcut's own address (sietch://recents, sietch://search).
+        LaunchedEffect(deepLink) {
+            val link = deepLink ?: return@LaunchedEffect
+            when (link.host) {
+                "recents" -> navController.navigate(Routes.RECENTS) { launchSingleTop = true }
+                "search" -> navController.navigate(Routes.SEARCH) { launchSingleTop = true }
+            }
+            onDeepLinkHandled()
+        }
         val nav = remember(navController) {
             object : Navigator {
                 override fun openFolder(steps: List<FolderStep>) = navController.navigate(Routes.browse(steps))
